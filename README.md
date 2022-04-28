@@ -296,9 +296,10 @@ Whereas with `-Zpolonius` it is accepted.
 
   - [Demo](https://play.integer32.com/?version=nightly&mode=debug&edition=2021&gist=3996b28125d97c6d42fdf52a2039a5d2)
 
-#### The ArcaneMagic™: the correct use of `unsafe`, here
+#### The ArcaneMagic™
 
-to palliate the lack of `-Zpolonius`, is to change:
+The correct use of `unsafe`, here, to palliate the lack of `-Zpolonius`, is to
+change:
 
 ```rust, ignore
 let tentative_borrow = &mut *borrow; // reborrow
