@@ -224,7 +224,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 ### Enters `::polonius-the-crab`
 
-![polonius the crab](https://cdn.discordapp.com/attachments/818964227783262209/969197785721217024/unknown.png)
+![polonius-the-crab](https://user-images.githubusercontent.com/9920355/165791136-26d09367-3d84-4d09-8f6a-6a3dd91ffc50.jpg)
 <!-- ![polonius the crab](https://user-images.githubusercontent.com/9920355/165742437-d644851e-83c3-45c7-941f-c7909cab0192.png) -->
 
 #### Explanation of its implementation
@@ -493,7 +493,7 @@ This leads to the following `get_or_insert` usage:
 
 ## Using Polonius The Crab for Fun And Profit™
 
-![polonius the crab](https://cdn.discordapp.com/attachments/818964227783262209/969197785721217024/unknown.png)
+![polonius-the-crab](https://user-images.githubusercontent.com/9920355/165791136-26d09367-3d84-4d09-8f6a-6a3dd91ffc50.jpg)
 
 ```rust
 #![forbid(unsafe_code)]
