@@ -355,7 +355,7 @@ fine (this is further enforced in CI through a special `test`).
 ##### `None` becomes `<Err>`
 
 It turns out that we don't have to restrict the `branch` to returning no data on
-`None`, and that we can use it as a "channel" through which smuggle
+`None`, and that we can use it as a "channel" through which to smuggle
 **non-borrowing** data.
 
 This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
