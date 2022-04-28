@@ -446,7 +446,9 @@ issues.
 
 And yet, it is cumbersome to use:
 
-```rust ,ignore
+```rust
+use ::polonius_the_crab::polonius;
+
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
@@ -454,17 +456,17 @@ fn get_or_insert (
     #![forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 
     enum StringRef {}
-    impl<'lt> WithLifetime<'lt> for StringRef {
+    impl<'lt> ::polonius_the_crab::WithLifetime<'lt> for StringRef {
         type T = &'lt String;
     }
 
-    match polonius::<_, StringRef, _>(map, |map| map.get(&22)) {
+    match polonius::<StringRef, _, _, _>(map, |map| map.get(&22).ok_or(())) {
         | Ok(ret) => {
             // no second-lookup!
             ret
         },
         // we get the borrow back (we had to give the original one to `polonius()`)
-        | Err(map) => {
+        | Err((map, ())) => {
             map.insert(22, String::from("…"));
             &map[&22]
         },
