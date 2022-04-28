@@ -51,6 +51,12 @@ where
     let err = {
         #[cfg(not(feature = "polonius"))]
         let state = unsafe {
+            // SAFETY:
+            // > Though this be `unsafe`, there is soundness in 't.
+            //
+            // More seriously, read the docs, I've detailed the reasoning there
+            // in great length. And/or check the `tests/soundness.rs` test,
+            // which `cargo check`s this very snippet without this `unsafe`.
             &mut *(state as *mut _)
         };
         match branch(state) {
