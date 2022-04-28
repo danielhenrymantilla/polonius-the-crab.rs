@@ -63,6 +63,6 @@ where
                 }
             }
         } {}
-        return None;
+        None
     }
 }
