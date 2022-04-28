@@ -13,7 +13,7 @@ repository = "https://github.com/danielhenrymantilla/polonius-the-crab.rs"
 documentation = "https://docs.rs/polonius-the-crab"
 readme = "README.md"
 
-# description = "…"
+description = "Tools to feature more lenient Polonius-based borrow-checker patterns in stable Rust."
 # keywords = []
 
 [features]
