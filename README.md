@@ -104,16 +104,17 @@ fn get_or_insert(
 <details><summary>Click to see</summary>
 
 Now, this pattern is known to be sound / a false positive from the current
-borrow checker, NLL (the technical reason behind it is the _named_ /
-in-function-signature lifetime involved in the borrow: contrary to a fully
-in-body anonymous lifetime / borrow, borrows that last for a named /
-outer-generic lifetime are deemed to last _until the end of the function_,
-**across all possible codepaths** (even those unreachable whence the borrow
-starts)).
+borrow checker, NLL.
 
-  - a way to notice this difference is to, when possible, rewrite the function
-    as a macro. By virtue of being syntactically inlined, it will involve
-    anonymous lifetimes and won't cause any trouble.
+  - The technical reason behind it is the _named_ / in-function-signature
+    lifetime involved in the borrow: contrary to a fully-in-body anonymous
+    borrow, borrows that last for a "named" / outer-generic lifetime are deemed
+    to last _until the end of the function_, **across all possible codepaths**
+    (even those unreachable whence the borrow starts).
+
+      - a way to notice this difference is to, when possible, rewrite the function
+        as a macro. By virtue of being syntactically inlined, it will involve
+        anonymous lifetimes and won't cause any trouble.
 
 ### Workarounds
 
@@ -224,7 +225,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 ### Enters `::polonius-the-crab`
 
-![polonius the crab](https://cdn.discordapp.com/attachments/818964227783262209/969197785721217024/unknown.png)
+![polonius-the-crab](https://user-images.githubusercontent.com/9920355/165791136-26d09367-3d84-4d09-8f6a-6a3dd91ffc50.jpg)
 <!-- ![polonius the crab](https://user-images.githubusercontent.com/9920355/165742437-d644851e-83c3-45c7-941f-c7909cab0192.png) -->
 
 #### Explanation of its implementation
@@ -296,9 +297,10 @@ Whereas with `-Zpolonius` it is accepted.
 
   - [Demo](https://play.integer32.com/?version=nightly&mode=debug&edition=2021&gist=3996b28125d97c6d42fdf52a2039a5d2)
 
-#### The ArcaneMagic™: the correct use of `unsafe`, here
+#### The ArcaneMagic™
 
-to palliate the lack of `-Zpolonius`, is to change:
+The correct use of `unsafe`, here, to palliate the lack of `-Zpolonius`, is to
+change:
 
 ```rust, ignore
 let tentative_borrow = &mut *borrow; // reborrow
@@ -354,7 +356,7 @@ fine (this is further enforced in CI through a special `test`).
 ##### `None` becomes `<Err>`
 
 It turns out that we don't have to restrict the `branch` to returning no data on
-`None`, and that we can use it as a "channel" through which smuggle
+`None`, and that we can use it as a "channel" through which to smuggle
 **non-borrowing** data.
 
 This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
@@ -446,7 +448,9 @@ issues.
 
 And yet, it is cumbersome to use:
 
-```rust ,ignore
+```rust
+use ::polonius_the_crab::polonius;
+
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
@@ -454,17 +458,17 @@ fn get_or_insert (
     #![forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 
     enum StringRef {}
-    impl<'lt> WithLifetime<'lt> for StringRef {
+    impl<'lt> ::polonius_the_crab::WithLifetime<'lt> for StringRef {
         type T = &'lt String;
     }
 
-    match polonius::<_, StringRef, _>(map, |map| map.get(&22)) {
+    match polonius::<StringRef, _, _, _>(map, |map| map.get(&22).ok_or(())) {
         | Ok(ret) => {
             // no second-lookup!
             ret
         },
         // we get the borrow back (we had to give the original one to `polonius()`)
-        | Err(map) => {
+        | Err((map, ())) => {
             map.insert(22, String::from("…"));
             &map[&22]
         },
@@ -493,7 +497,7 @@ This leads to the following `get_or_insert` usage:
 
 ## Using Polonius The Crab for Fun And Profit™
 
-![polonius the crab](https://cdn.discordapp.com/attachments/818964227783262209/969197785721217024/unknown.png)
+![polonius-the-crab](https://user-images.githubusercontent.com/9920355/165791136-26d09367-3d84-4d09-8f6a-6a3dd91ffc50.jpg)
 
 ```rust
 #![forbid(unsafe_code)]

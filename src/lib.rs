@@ -36,7 +36,7 @@ where
 pub
 fn polonius<Ret : HKT, State : ?Sized, Err, F> (
     state: &mut State,
-    scope: F,
+    branch: F,
 ) -> Result<
         <Ret as WithLifetime<'_>>::T,
         (&'_ mut State, Err),
@@ -51,9 +51,15 @@ where
     let err = {
         #[cfg(not(feature = "polonius"))]
         let state = unsafe {
+            // SAFETY:
+            // > Though this be `unsafe`, there is soundness in 't.
+            //
+            // More seriously, read the docs, I've detailed the reasoning there
+            // in great length. And/or check the `tests/soundness.rs` test,
+            // which `cargo check`s this very snippet without this `unsafe`.
             &mut *(state as *mut _)
         };
-        match scope(state) {
+        match branch(state) {
             | Ok(ret) => return Ok(ret),
             | Err(err) => err,
         }
@@ -95,25 +101,91 @@ stuff(a_mut_binding) // macro gave it back
 // …
 # }
 ``` */
+///
+/// ### Generic parameters
+///
+/// Sometimes, the return value of that `polonius!` closure may need to refer to
+/// generic parameters. When that's the case, you'll need to tell the macro
+/// about those, using `<generics…>` syntax before the `|…| ->` part of the
+/// macro input:
+///
+/** ```rust
+use ::polonius_the_crab::prelude::*;
+
+fn get_or_insert<'map, 'v, K, V : ?Sized> (
+    mut map: &'map mut ::std::collections::HashMap<K, &'v V>,
+    key: &'_ K,
+    fallback_value: &'v V,
+) -> &'map &'v V
+where
+    K : ::core::hash::Hash + Eq + Clone,
+    V : ::core::fmt::Debug,
+{
+    // No need to provide `K`, since not part of the return type;
+    // nor to provide the bounds for `V`, except for:
+    //   - nested borrows (if ever),
+    //   - `?Sized` (every now and then)
+    //   - or to be able to name a bound-provided associated type (super rare!)
+    polonius!(<'v, V : 'v + ?Sized> |map| -> &'polonius &'v V {
+        if let Some(v) = map.get(key) {
+            dbg!(v); // Even though `Debug` is not provided to the signature, it is available to the body.
+            polonius_return!(v);
+        }
+    });
+    map.insert(key.clone(), fallback_value);
+    &map[key]
+}
+``` */
 #[macro_export]
 macro_rules! polonius {(
     $(
         <
-            $( $($lt:lifetime),+ $(,)? )?
-            $( $($T:ident),+ $(,)? )?
+            $( $(
+                $lt:lifetime
+            ),+ $(,)? )?
+            $( $(
+                $T:ident $(:
+                    $( $super:lifetime + )?
+                    $( ?$Sized:ident )?
+                    $( + )?
+                    $( $Bound:path )?
+                )?
+            ),+ $(,)? )?
         >
     )?
     |$var:ident| -> $Ret:ty $body:block
 ) => ({
     #[allow(nonstandard_style)]
     struct __polonius_the_crab_Ret <$(
-        $($($lt ,)+)?
-        $($($T ,)+)?
+        $($(
+            $lt
+        ,)+)?
+        $($(
+            $T $(:
+                $( $super + )?
+                $( ?$Sized + )?
+                $( $Bound )?
+            )?
+        ,)+)?
     )?> (
         *mut Self,
     );
 
-    impl<'polonius, $($($($lt ,)+)? $($($T ,)+)?)?>
+    impl<
+        'polonius,
+        $(
+            $($(
+                $lt
+            ,)+)?
+            $($(
+                $T $(:
+                    $( $super + )?
+                    $( ?$Sized + )?
+                    $( $Bound )?
+                )?
+            ,)+)?
+        )?
+    >
         $crate::WithLifetime<'polonius>
     for
         __polonius_the_crab_Ret<$(
@@ -136,7 +208,14 @@ macro_rules! polonius {(
             $var,
             |mut $var: &mut _| {
                 $var = $var;
-                $crate::ඞ::core::result::Result::Err($body)
+                $crate::ඞ::core::result::Result::Err(
+                    if true
+                        $body
+                    else {
+                        // avoid a dead-code warning
+                        $crate::ඞ::core::option::Option::None.unwrap()
+                    }
+                )
             },
         )
     {

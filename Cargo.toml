@@ -4,8 +4,8 @@ name = "polonius-the-crab"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.1.0-rc1"  # Keep in sync
-edition = "2018"
+version = "0.1.0"  # Keep in sync
+edition = "2021"
 rust-version = "1.56.0"
 
 license = "Zlib OR MIT OR Apache-2.0"
@@ -13,7 +13,7 @@ repository = "https://github.com/danielhenrymantilla/polonius-the-crab.rs"
 documentation = "https://docs.rs/polonius-the-crab"
 readme = "README.md"
 
-# description = "…"
+description = "Tools to feature more lenient Polonius-based borrow-checker patterns in stable Rust."
 # keywords = []
 
 [features]
