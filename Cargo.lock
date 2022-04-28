@@ -4,4 +4,4 @@ version = 3
 
 [[package]]
 name = "polonius-the-crab"
-version = "0.1.0-rc4"
+version = "0.1.0"
