@@ -104,16 +104,17 @@ fn get_or_insert(
 <details><summary>Click to see</summary>
 
 Now, this pattern is known to be sound / a false positive from the current
-borrow checker, NLL (the technical reason behind it is the _named_ /
-in-function-signature lifetime involved in the borrow: contrary to a fully
-in-body anonymous lifetime / borrow, borrows that last for a named /
-outer-generic lifetime are deemed to last _until the end of the function_,
-**across all possible codepaths** (even those unreachable whence the borrow
-starts)).
+borrow checker, NLL.
 
-  - a way to notice this difference is to, when possible, rewrite the function
-    as a macro. By virtue of being syntactically inlined, it will involve
-    anonymous lifetimes and won't cause any trouble.
+  - The technical reason behind it is the _named_ / in-function-signature
+    lifetime involved in the borrow: contrary to a fully-in-body anonymous
+    borrow, borrows that last for a "named" / outer-generic lifetime are deemed
+    to last _until the end of the function_, **across all possible codepaths**
+    (even those unreachable whence the borrow starts).
+
+      - a way to notice this difference is to, when possible, rewrite the function
+        as a macro. By virtue of being syntactically inlined, it will involve
+        anonymous lifetimes and won't cause any trouble.
 
 ### Workarounds
 
