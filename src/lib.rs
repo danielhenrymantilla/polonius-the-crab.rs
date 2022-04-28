@@ -136,7 +136,14 @@ macro_rules! polonius {(
             $var,
             |mut $var: &mut _| {
                 $var = $var;
-                $crate::ඞ::core::result::Result::Err($body)
+                $crate::ඞ::core::result::Result::Err(
+                    if true
+                        $body
+                    else {
+                        // avoid a dead-code warning
+                        $crate::ඞ::core::option::Option::None.unwrap()
+                    }
+                )
             },
         )
     {
