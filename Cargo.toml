@@ -4,7 +4,7 @@ name = "polonius-the-crab"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.1.0-rc2"  # Keep in sync
+version = "0.1.0-rc3"  # Keep in sync
 edition = "2021"
 rust-version = "1.56.0"
 
