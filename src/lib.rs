@@ -36,7 +36,7 @@ where
 pub
 fn polonius<Ret : HKT, State : ?Sized, Err, F> (
     state: &mut State,
-    scope: F,
+    branch: F,
 ) -> Result<
         <Ret as WithLifetime<'_>>::T,
         (&'_ mut State, Err),
@@ -53,7 +53,7 @@ where
         let state = unsafe {
             &mut *(state as *mut _)
         };
-        match scope(state) {
+        match branch(state) {
             | Ok(ret) => return Ok(ret),
             | Err(err) => err,
         }
