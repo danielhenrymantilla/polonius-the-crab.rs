@@ -5,7 +5,7 @@ authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
 version = "0.1.0-rc2"  # Keep in sync
-edition = "2018"
+edition = "2021"
 rust-version = "1.56.0"
 
 license = "Zlib OR MIT OR Apache-2.0"
