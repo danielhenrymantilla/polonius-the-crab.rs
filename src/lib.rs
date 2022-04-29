@@ -207,7 +207,10 @@ macro_rules! polonius {(
         >(
             $var,
             |mut $var: &mut _| {
-                $var = $var;
+                // silence the unused `mut` warning.
+                #[allow(clippy::self_assignment)] {
+                    $var = $var;
+                }
                 $crate::ඞ::core::result::Result::Err(
                     if true
                         $body
