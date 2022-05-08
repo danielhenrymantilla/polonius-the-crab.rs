@@ -10,6 +10,9 @@ mod prelude {
     pub use crate::{
         exit_polonius,
         polonius,
+        polonius_break,
+        polonius_continue,
+        polonius_loop,
         polonius_return,
     };
 }
@@ -178,6 +181,129 @@ macro_rules! polonius_return {( $e:expr $(,)? ) => (
 macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
     return $crate::ඞ::core::result::Result::Err(
         ($($e ,)? (),).0
+    )
+)}
+
+/// Convenience support for the `loop { … polonius!(…) }` pattern.
+///
+/// ### Example
+///
+/** ```rust
+#![forbid(unsafe_code)]
+use {
+    ::polonius_the_crab::{
+        prelude::*,
+    },
+    ::std::{
+        collections::HashMap,
+    },
+};
+
+enum Value {
+    Alive(i32),
+    Daed,
+}
+
+/// Notice how this example, *despite its usage of the fancy `.entry()` API
+/// of `HashMap`s*, still needs `polonius_the_crab` to express this logic!
+fn get_first_alive_from_base_or_insert (
+    mut map: &'_ mut HashMap<usize, Value>,
+    base: usize,
+    default_value: i32,
+) -> &'_ i32
+{
+    let mut idx = base;
+    // (loop {
+    polonius_loop!(|map| -> &'polonius i32 {
+        use ::std::collections::hash_map::*;
+        // return(
+        polonius_return!(
+            match map.entry(idx) {
+                | Entry::Occupied(entry) => match entry.into_mut() {
+                    // Found a value!
+                    | &mut Value::Alive(ref val) => val,
+                    // "tombstone", keep searching
+                    | &mut Value::Daed => {
+                        idx += 1;
+                        // continue;
+                        polonius_continue!();
+                    },
+                },
+                | Entry::Vacant(slot) => match slot.insert(Value::Alive(default_value)) {
+                    | &mut Value::Alive(ref val) => val,
+                    | &mut Value::Daed => unreachable!(),
+                },
+            }
+        );
+    })
+}
+``` */
+///
+/// <details><summary>Error message without <code>polonius</code></summary>
+///
+/** ```console
+ error[E0499]: cannot borrow `*map` as mutable more than once at a time
+   --> src/lib.rs:222:18
+    |
+ 22 | mut map: &'_ mut HashMap<usize, Value>,
+    |          - let's call the lifetime of this reference `'1`
+ ...
+ 33 |     match map.entry(idx) {
+    |           ^^^ `*map` was mutably borrowed here in the previous iteration of the loop
+ ...
+ 45 |         | &mut Value::Alive(ref val) => val,
+    |                                         --- returning this value requires that `*map` be borrowed for `'1`
+``` */
+///
+/// ___
+///
+/// </details>
+#[macro_export]
+macro_rules! polonius_loop {(
+    | $var:ident $(,)? | -> $Ret:ty
+        $body:block
+    $(,)?
+) => (
+    loop {
+        match $crate::polonius!(
+            | $var | -> $Ret {
+                let () =
+                    if true
+                        $body
+                    else {
+                        // avoid a dead-code warning
+                        $crate::ඞ::core::option::Option::None.unwrap()
+                    }
+                ;
+                $crate::polonius_continue!();
+            },
+        )
+        {
+            | $crate::ඞ::core::ops::ControlFlow::Break(value) => break value,
+            | $crate::ඞ::core::ops::ControlFlow::Continue(()) => continue,
+        }
+    }
+)}
+
+/// `break` a **non-dependent value** out of a [`polonius_loop!`].
+///
+///   - (when the value to `break` with is dependent, then the necessary pattern
+///     is not `loop { polonius!(…) }` (what [`polonius_loop!`] stands for) but
+///     `polonius!(… let it = loop { … break … }; …)`).
+#[macro_export]
+macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
+    return $crate::ඞ::core::result::Result::Err(
+        $crate::ඞ::core::ops::ControlFlow::Break(
+            ($($e ,)? () ,).0
+        )
+    )
+)}
+
+/// `continue` to the next iteration of a [`polonius_loop!`].
+#[macro_export]
+macro_rules! polonius_continue {() => (
+    return $crate::ඞ::core::result::Result::Err(
+        $crate::ඞ::core::ops::ControlFlow::<_>::Continue(())
     )
 )}
 
