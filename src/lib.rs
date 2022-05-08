@@ -8,9 +8,9 @@
 pub
 mod prelude {
     pub use crate::{
+        exit_polonius,
         polonius,
         polonius_return,
-        polonius_break,
     };
 }
 
@@ -91,7 +91,7 @@ let x = polonius!(|a_mut_binding| -> SomeRetType<'polonius> {
         polonius_return!(some_dependent_type);
     }
     if some_other_cond() {
-        polonius_break!(42);
+        exit_polonius!(42);
         unreachable!();
     }
     42
@@ -238,8 +238,10 @@ macro_rules! polonius_return {( $e:expr $(,)? ) => (
 
 /// See [`polonius!`] for more info.
 #[macro_export]
-macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
-    return $crate::ඞ::core::result::Result::Err(($($e)?))
+macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
+    return $crate::ඞ::core::result::Result::Err(
+        ($($e ,)? (),).0
+    )
 )}
 
 // macro internals

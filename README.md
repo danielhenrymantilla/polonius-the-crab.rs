@@ -484,8 +484,8 @@ Hence why this crate also offers
 
 ## Convenient macros for ergonomic usage 😗👌
 
-Mainly, a `polonius!` entry point, within which you can use `polonius_return!`
-to **early return the dependent value**, or a `polonius_break!` to instead
+Mainly, the `polonius!` entry point, within which you can use `polonius_return!`
+to **early return the dependent value**, or `exit_polonius!` to instead
 "break" / leave the `polonius!` block with a **non-dependent** value (notice how
 the _branch_ nature of this borrow checker limitation is kept in the very bones
 of the API).
