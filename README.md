@@ -70,9 +70,10 @@ use ::std::{
 
 /// Typical example of lack-of-Polonius limitation: get_or_insert pattern.
 /// See https://nikomatsakis.github.io/rust-belt-rust-2019/#72
-fn get_or_insert(
-    map: &mut HashMap<u32, String>,
-) -> &String {
+fn get_or_insert (
+    map: &'_ mut HashMap<u32, String>,
+) -> &'_ String
+{
     if let Some(v) = map.get(&22) {
         return v;
     }
@@ -150,9 +151,10 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
         collections::HashMap,
     };
 
-    fn get_or_insert(
-        map: &mut HashMap<u32, String>,
-    ) -> &String {
+    fn get_or_insert (
+        map: &'_ mut HashMap<u32, String>,
+    ) -> &'_ String
+    {
         map.entry(22).or_insert_with(|| String::from("hi"))
     }
     ```
@@ -169,9 +171,10 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
         collections::HashMap,
     };
 
-    fn get_or_insert(
-        map: &mut HashMap<u32, String>,
-    ) -> &String {
+    fn get_or_insert (
+        map: &'_ mut HashMap<u32, String>,
+    ) -> &'_ String
+    {
         // written like this to show the "transition path" from previous code
         let should_insert =
             if let Some(_discarded) = map.get(&22) {
@@ -200,10 +203,10 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
         collections::HashMap,
     };
 
-    fn with_get_or_insert<R>(
-        map: &mut HashMap<u32, String>,
+    fn with_get_or_insert<R> (
+        map: &'_ mut HashMap<u32, String>,
         yield_:     impl FnOnce(
-    /* -> */ &String
+    /* -> */ &'_ String
                     ) -> R ) -> R
     {
         if let Some(v) = map.get(&22) {
