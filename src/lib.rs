@@ -16,7 +16,8 @@ mod prelude {
 
 /// See the [top-level docs][crate] for more info.
 pub
-trait WithLifetime<'lt, Bound = &'lt Self> {
+trait WithLifetime<'lt> { // Note: the `&'lt Self` implicit bound hack is,
+                          // for once, unnecessary.
     type T;
 }
 
@@ -34,7 +35,7 @@ where
 
 /// See the [top-level docs][crate] for more info.
 pub
-fn polonius<Ret : HKT, State : ?Sized, Err, F> (
+fn polonius<Ret : ?Sized + HKT, State : ?Sized, Err, F> (
     state: &mut State,
     branch: F,
 ) -> Result<
@@ -104,10 +105,7 @@ stuff(a_mut_binding) // macro gave it back
 ///
 /// ### Generic parameters
 ///
-/// Sometimes, the return value of that `polonius!` closure may need to refer to
-/// generic parameters. When that's the case, you'll need to tell the macro
-/// about those, using `<generics…>` syntax before the `|…| ->` part of the
-/// macro input:
+/// They now Just Work™.
 ///
 /** ```rust
 use ::polonius_the_crab::prelude::*;
@@ -121,12 +119,7 @@ where
     K : ::core::hash::Hash + Eq + Clone,
     V : ::core::fmt::Debug,
 {
-    // No need to provide `K`, since not part of the return type;
-    // nor to provide the bounds for `V`, except for:
-    //   - nested borrows (if ever),
-    //   - `?Sized` (every now and then)
-    //   - or to be able to name a bound-provided associated type (super rare!)
-    polonius!(<'v, V : 'v + ?Sized> |map| -> &'polonius &'v V {
+    polonius!(|map| -> &'polonius &'v V {
         if let Some(v) = map.get(key) {
             dbg!(v); // Even though `Debug` is not provided to the signature, it is available to the body.
             polonius_return!(v);
@@ -138,69 +131,13 @@ where
 ``` */
 #[macro_export]
 macro_rules! polonius {(
-    $(
-        <
-            $( $(
-                $lt:lifetime
-            ),+ $(,)? )?
-            $( $(
-                $T:ident $(:
-                    $( $super:lifetime + )?
-                    $( ?$Sized:ident )?
-                    $( + )?
-                    $( $Bound:path )?
-                )?
-            ),+ $(,)? )?
-        >
-    )?
-    |$var:ident| -> $Ret:ty $body:block
+    |$var:ident $(,)?| -> $Ret:ty
+        $body:block
+    $(,)?
 ) => ({
-    #[allow(nonstandard_style)]
-    struct __polonius_the_crab_Ret <$(
-        $($(
-            $lt
-        ,)+)?
-        $($(
-            $T $(:
-                $( $super + )?
-                $( ?$Sized + )?
-                $( $Bound )?
-            )?
-        ,)+)?
-    )?> (
-        *mut Self,
-    );
-
-    impl<
-        'polonius,
-        $(
-            $($(
-                $lt
-            ,)+)?
-            $($(
-                $T $(:
-                    $( $super + )?
-                    $( ?$Sized + )?
-                    $( $Bound )?
-                )?
-            ,)+)?
-        )?
-    >
-        $crate::WithLifetime<'polonius>
-    for
-        __polonius_the_crab_Ret<$(
-            $($($lt ,)+)?
-            $($($T ,)+)?
-        )?>
-    {
-        type T = $Ret;
-    }
-
     match
         $crate::polonius::<
-            __polonius_the_crab_Ret<$(
-                $($($T ,)+)?
-            )?>,
+            dyn for<'polonius> $crate::WithLifetime<'polonius, T = $Ret>,
             _,
             _,
             _,
