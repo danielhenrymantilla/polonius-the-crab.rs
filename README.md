@@ -447,7 +447,7 @@ impl<'lt> WithLifetime <'lt>
 
 <details><summary>Click to see</summary>
 
-Actually, as of `0.1.3`, this crate now uses a fancier trick, which stems from
+Actually, as of `0.2.0`, this crate now uses a fancier trick, which stems from
 the following observation. Consider the type
 `dyn for<'any> WithLifetime<'any, T = &'any String>`:
 
