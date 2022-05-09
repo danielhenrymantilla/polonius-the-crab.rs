@@ -300,7 +300,7 @@ spans until _any_ end of function (the borrow checker bug).
 
 Whereas with `-Zpolonius` it is accepted.
 
-  - [Demo](https://rust.godbolt.org/z/cxc7j4xKh)
+  - [Demo](https://rust.godbolt.org/z/81sn7oK9s)
 
 #### The ArcaneMagic™
 
