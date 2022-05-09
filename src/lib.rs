@@ -14,6 +14,7 @@ mod prelude {
         polonius_continue,
         polonius_loop,
         polonius_return,
+        polonius_try,
     };
 }
 
@@ -72,6 +73,8 @@ where
 }
 
 /// Convenient entry-point to this crate's logic.
+///
+///   - See the [top-level docs][crate] for more info.
 ///
 /// ## Usage
 ///
@@ -182,6 +185,54 @@ macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
     return $crate::ඞ::core::result::Result::Err(
         ($($e ,)? (),).0
     )
+)}
+
+/// Perform the `?` operation (on `Result`s). See [`polonius!`] for more info.
+///
+/// ## Example
+///
+/** ```rust
+use {
+    ::polonius_the_crab::prelude::*,
+    ::std::collections::HashMap,
+};
+
+enum Error { /* … */ }
+
+ fn fallible_operation (value: &'_ i32)
+   -> Result<(), Error>
+ {
+ #   Ok(())
+     // …
+ }
+
+fn get_or_insert (
+    mut map: &'_ mut HashMap<i32, i32>,
+) -> Result<&'_ i32, Error>
+{
+    polonius!(|map| -> Result<&'polonius i32, Error> {
+        if let Some(value) = map.get(&22) {
+            // fallible_operation(value)?;
+            polonius_try!(fallible_operation(value));
+            polonius_return!(Ok(value));
+        }
+    });
+    map.insert(22, 42);
+    Ok(&map[&22])
+}
+``` */
+#[macro_export]
+macro_rules! polonius_try {( $e:expr $(,)? ) => (
+    match $e {
+        | $crate::ඞ::core::result::Result::Ok(it) => it,
+        | $crate::ඞ::core::result::Result::Err(err) => {
+            $crate::polonius_return!(
+                $crate::ඞ::core::result::Result::Err(
+                    $crate::ඞ::core::convert::From::from(err),
+                )
+            )
+        },
+    }
 )}
 
 /// Convenience support for the `loop { … polonius!(…) }` pattern.
