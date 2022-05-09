@@ -127,7 +127,7 @@ where
 {
     polonius!(|map| -> &'polonius &'v V {
         if let Some(v) = map.get(key) {
-            dbg!(v); // Even though `Debug` is not provided to the signature, it is available to the body.
+            dbg!(v);
             polonius_return!(v);
         }
     });
