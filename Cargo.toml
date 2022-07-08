@@ -6,7 +6,7 @@ authors = [
 ]
 version = "0.2.1"  # Keep in sync
 edition = "2018"
-rust-version = "1.53.0"
+# rust-version = "1.53.0"
 
 license = "Zlib OR MIT OR Apache-2.0"
 repository = "https://github.com/danielhenrymantilla/polonius-the-crab.rs"
