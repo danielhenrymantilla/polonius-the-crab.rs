@@ -1,5 +1,7 @@
-#![doc = include_str!("../README.md")]
 #![no_std]
+#![cfg_attr(feature = "docs-rs",
+    cfg_attr(all(), doc = include_str!("../README.md"))
+)]
 #![cfg_attr(feature = "polonius",
     forbid(unsafe_code),
 )]

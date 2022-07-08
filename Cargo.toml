@@ -5,8 +5,8 @@ authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
 version = "0.2.1"  # Keep in sync
-edition = "2021"
-rust-version = "1.56.0"
+edition = "2018"
+rust-version = "1.53.0"
 
 license = "Zlib OR MIT OR Apache-2.0"
 repository = "https://github.com/danielhenrymantilla/polonius-the-crab.rs"

@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+use std::convert::TryInto;
+
 use ::polonius_the_crab::prelude::*;
 
 trait LendingIteratorItem<'n, Bound = &'n mut Self> {
