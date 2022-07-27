@@ -104,7 +104,7 @@ fn get_or_insert (
 
 ## Explanation
 
-<details><summary>Click to see</summary>
+<details open class="custom"><summary><span class="summary-box"><span>Click to hide<span></span></summary>
 
 Now, this pattern is known to be sound / a false positive from the current
 borrow checker, NLL.
@@ -139,7 +139,7 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
 
 ### Non-`unsafe` albeit cumbersome workarounds for lack-of-Polonius issues
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
   - if possible, **reach for a dedicated API**.
     For instance, the `get_or_insert()` example can be featured using the
@@ -235,7 +235,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 #### Explanation of its implementation
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
 So, back to that "safety encapsulation" idea:
 
@@ -372,6 +372,9 @@ This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
 
 ##### The `FnOnceReturningAnOption` trick is replaced with a `HKT` pattern
 
+  - (where `FnOnceReturningAnOption` is the helper trait used in the `Demo`
+    snippet above)
+
 Indeed, a `FnOnceReturningAnOption`-based signature would be problematic on the
 caller's side, since:
 
@@ -445,7 +448,7 @@ impl<'lt> WithLifetime <'lt>
 
 #### New: the `dyn for<'a>` _ad-hoc_ HKT trick
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
 Actually, as of `0.2.0`, this crate now uses a fancier trick, which stems from
 the following observation. Consider the type
