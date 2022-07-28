@@ -84,7 +84,8 @@ fn get_or_insert (
 
 <details class="custom"><summary>error message</summary>
 
-```console
+```rust
+# /*
  error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
   --> src/lib.rs:53:5
    |
@@ -98,6 +99,7 @@ fn get_or_insert (
 18 |     }
 19 |     map.insert(22, String::from("hi"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+# */
 ```
 
 </details>
