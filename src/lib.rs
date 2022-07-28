@@ -80,63 +80,63 @@ where
 ///
 /// ## Usage
 ///
-/** ```rust
-use ::polonius_the_crab::prelude::*;
+/**  - ```rust
+    use ::polonius_the_crab::prelude::*;
 
-# fn foo (arg: &mut ()) -> &mut () {
-let mut a_mut_binding: &mut _ = // …
-# arg;
-# type SomeRetType<'__> = &'__ mut ();
-# let some_cond = || true;
-# let some_other_cond = || true;
-# use ::core::convert::identity as stuff;
+    # fn foo (arg: &mut ()) -> &mut () {
+    let mut a_mut_binding: &mut _ = // …
+    # arg;
+    # type SomeRetType<'__> = &'__ mut ();
+    # let some_cond = || true;
+    # let some_other_cond = || true;
+    # use ::core::convert::identity as stuff;
 
-//                                      the lifetime placeholder has to be
-//                                          named `'polonius` !!
-//                                               vvvvvvvvv
-let x = polonius!(|a_mut_binding| -> SomeRetType<'polonius> {
-    let some_dependent_type = stuff(a_mut_binding);
-    if some_cond() {
-        polonius_return!(some_dependent_type);
-    }
-    if some_other_cond() {
-        exit_polonius!(42);
-        unreachable!();
-    }
-    42
-});
-assert_eq!(x, 42);
-stuff(a_mut_binding) // macro gave it back
-// …
-# }
-``` */
+    //                                      the lifetime placeholder has to be
+    //                                          named `'polonius` !!
+    //                                               vvvvvvvvv
+    let x = polonius!(|a_mut_binding| -> SomeRetType<'polonius> {
+        let some_dependent_type = stuff(a_mut_binding);
+        if some_cond() {
+            polonius_return!(some_dependent_type);
+        }
+        if some_other_cond() {
+            exit_polonius!(42);
+            unreachable!();
+        }
+        42
+    });
+    assert_eq!(x, 42);
+    stuff(a_mut_binding) // macro gave it back
+    // …
+    # }
+    ``` */
 ///
 /// ### Generic parameters
 ///
 /// They Just Work™.
 ///
-/** ```rust
-use ::polonius_the_crab::prelude::*;
+/**  - ```rust
+    use ::polonius_the_crab::prelude::*;
 
-fn get_or_insert<'map, 'v, K, V : ?Sized> (
-    mut map: &'map mut ::std::collections::HashMap<K, &'v V>,
-    key: &'_ K,
-    fallback_value: &'v V,
-) -> &'map &'v V
-where
-    K : ::core::hash::Hash + Eq + Clone,
-    V : ::core::fmt::Debug,
-{
-    polonius!(|map| -> &'polonius &'v V {
-        if let Some(v) = map.get(key) {
-            dbg!(v);
-            polonius_return!(v);
-        }
-    });
-    map.insert(key.clone(), fallback_value);
-    &map[key]
-}
-``` */
+    fn get_or_insert<'map, 'v, K, V : ?Sized> (
+        mut map: &'map mut ::std::collections::HashMap<K, &'v V>,
+        key: &'_ K,
+        fallback_value: &'v V,
+    ) -> &'map &'v V
+    where
+        K : ::core::hash::Hash + Eq + Clone,
+        V : ::core::fmt::Debug,
+    {
+        polonius!(|map| -> &'polonius &'v V {
+            if let Some(v) = map.get(key) {
+                dbg!(v);
+                polonius_return!(v);
+            }
+        });
+        map.insert(key.clone(), fallback_value);
+        &map[key]
+    }
+    ``` */
 #[macro_export]
 macro_rules! polonius {(
     |$var:ident $(,)?| -> $Ret:ty
@@ -205,36 +205,36 @@ macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
 ///
 /// ## Example
 ///
-/** ```rust
-use {
-    ::polonius_the_crab::prelude::*,
-    ::std::collections::HashMap,
-};
+/**  - ```rust
+    use {
+        ::polonius_the_crab::prelude::*,
+        ::std::collections::HashMap,
+    };
 
-enum Error { /* … */ }
+    enum Error { /* … */ }
 
- fn fallible_operation (value: &'_ i32)
-   -> Result<(), Error>
- {
- #   Ok(())
-     // …
- }
+    fn fallible_operation (value: &'_ i32)
+      -> Result<(), Error>
+    {
+        // …
+        # Ok(())
+    }
 
-fn get_or_insert (
-    mut map: &'_ mut HashMap<i32, i32>,
-) -> Result<&'_ i32, Error>
-{
-    polonius!(|map| -> Result<&'polonius i32, Error> {
-        if let Some(value) = map.get(&22) {
-            // fallible_operation(value)?;
-            polonius_try!(fallible_operation(value));
-            polonius_return!(Ok(value));
-        }
-    });
-    map.insert(22, 42);
-    Ok(&map[&22])
-}
-``` */
+    fn get_or_insert (
+        mut map: &'_ mut HashMap<i32, i32>,
+    ) -> Result<&'_ i32, Error>
+    {
+        polonius!(|map| -> Result<&'polonius i32, Error> {
+            if let Some(value) = map.get(&22) {
+                // fallible_operation(value)?;
+                polonius_try!(fallible_operation(value));
+                polonius_return!(Ok(value));
+            }
+        });
+        map.insert(22, 42);
+        Ok(&map[&22])
+    }
+    ``` */
 #[macro_export]
 macro_rules! polonius_try {( $e:expr $(,)? ) => (
     match $e {
@@ -461,8 +461,8 @@ macro_rules! polonius_try {( $e:expr $(,)? ) => (
                 None => i += 1,
             }
         });
-        // Re-using `coll` is fine if not using the `dependent` variant.
-        &mut coll[&i]
+        // Re-using `coll` is fine if not using the `dependent` flavor of break.
+        coll.get_mut(&i).unwrap()
     }
     ``` */
 ///
