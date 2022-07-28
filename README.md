@@ -5,7 +5,7 @@
 <!-- ![stable-rust-stands-atop-dead-zpolonius](https://user-images.githubusercontent.com/9920355/165641079-e9987007-a088-4d9f-bdbe-7042cf3b3f02.png)
 -->
 
-<details><summary>More context</summary>
+<details class="custom"><summary>More context</summary>
 
  1. **Hamlet**:
 
@@ -82,7 +82,7 @@ fn get_or_insert (
 }
 ```
 
-<details><summary>error message</summary>
+<details class="custom"><summary>error message</summary>
 
 ```console
  error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable

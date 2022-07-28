@@ -305,7 +305,7 @@ macro_rules! polonius_try {( $e:expr $(,)? ) => (
     }
     ``` */
 ///
-/// <details><summary>Error message without <code>::polonius_the_crab</code></summary>
+/// <details class="custom"><summary>Error message without <code>::polonius_the_crab</code></summary>
 ///
 /**  - ```rust ,compile_fail
     # compile_error!("compiler error message"); /*
