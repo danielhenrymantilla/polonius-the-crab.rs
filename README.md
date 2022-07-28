@@ -5,7 +5,7 @@
 <!-- ![stable-rust-stands-atop-dead-zpolonius](https://user-images.githubusercontent.com/9920355/165641079-e9987007-a088-4d9f-bdbe-7042cf3b3f02.png)
 -->
 
-<details><summary>More context</summary>
+<details class="custom"><summary>More context</summary>
 
  1. **Hamlet**:
 
@@ -82,9 +82,10 @@ fn get_or_insert (
 }
 ```
 
-<details><summary>error message</summary>
+<details class="custom"><summary>error message</summary>
 
-```console
+```rust
+# /*
  error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
   --> src/lib.rs:53:5
    |
@@ -98,13 +99,14 @@ fn get_or_insert (
 18 |     }
 19 |     map.insert(22, String::from("hi"));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ mutable borrow occurs here
+# */
 ```
 
 </details>
 
 ## Explanation
 
-<details><summary>Click to see</summary>
+<details open class="custom"><summary><span class="summary-box"><span>Click to hide<span></span></summary>
 
 Now, this pattern is known to be sound / a false positive from the current
 borrow checker, NLL.
@@ -139,7 +141,7 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
 
 ### Non-`unsafe` albeit cumbersome workarounds for lack-of-Polonius issues
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
   - if possible, **reach for a dedicated API**.
     For instance, the `get_or_insert()` example can be featured using the
@@ -235,7 +237,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 #### Explanation of its implementation
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
 So, back to that "safety encapsulation" idea:
 
@@ -260,7 +262,7 @@ checker look the other way" just for a moment, the right moment.
 
 This thus gives us (in pseudo-code first):
 
-```rust, ignore
+```rust ,ignore
 fn polonius<'r, T> (
     borrow: &'r mut T,
     branch:
@@ -300,14 +302,14 @@ spans until _any_ end of function (the borrow checker bug).
 
 Whereas with `-Zpolonius` it is accepted.
 
-  - [Demo](https://play.integer32.com/?version=nightly&mode=debug&edition=2021&gist=3996b28125d97c6d42fdf52a2039a5d2)
+  - [Demo](https://rust.godbolt.org/z/81sn7oK9s)
 
 #### The ArcaneMagic™
 
 The correct use of `unsafe`, here, to palliate the lack of `-Zpolonius`, is to
 change:
 
-```rust, ignore
+```rust ,ignore
 let tentative_borrow = &mut *borrow; // reborrow
 ```
 
@@ -372,6 +374,9 @@ This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
 
 ##### The `FnOnceReturningAnOption` trick is replaced with a `HKT` pattern
 
+  - (where `FnOnceReturningAnOption` is the helper trait used in the `Demo`
+    snippet above)
+
 Indeed, a `FnOnceReturningAnOption`-based signature would be problematic on the
 caller's side, since:
 
@@ -397,7 +402,7 @@ So that `_<'any>` is achieved in another manner. Through HKTs, that is, through
 
 ```rust ,ignore
 //! In pseudo-code:
-fn polonius<'r, T, Ret<'_>> (
+fn polonius<'r, T, Ret : <'_>> (
     borrow: &'r mut T,
     branch: impl FnOnce(&'_ mut T) -> Option<Ret<'_>>,
 ) -> Result<
@@ -410,8 +415,10 @@ This cannot directly be written in Rust, but you can define a trait representing
 the `<'_>`-ness of a type (`HKT` in this crate), and with it, use
 `as WithLifetime<'a>::T` as the "feed `<'a>`" operator:
 
-```rust ,ignore
-//! Real code!
+```rust
+// Real code!
+use ::polonius_the_crab::{HKT, WithLifetime};
+
 fn polonius<'r, T, Ret : HKT> (
     borrow: &'r mut T,
     branch: impl FnOnce(&'_ mut T) -> Option< <Ret as WithLifetime<'_>>::T >,
@@ -419,6 +426,7 @@ fn polonius<'r, T, Ret : HKT> (
         <Ret as WithLifetime<'r>>::T,
         &'r mut T,
     >
+# { unimplemented!(); }
 ```
 
 We have reached the definition of the actual `fn polonius` exposed by this very
@@ -428,9 +436,11 @@ Now, a `HKT` type is still cumbersome to use. If we go back to that
 `get_or_insert` example that was returning a `&'_ String`, we'd need to express
 that "generic type" representing `<'lt> => &'lt String`, such as:
 
-```rust ,ignore
-/// Pseudo-code (`StringRef` is not a type, `StringRef<'…>` is).
-type StringRef<'any> = &'any String;
+```rust
+# use ::polonius_the_crab::WithLifetime;
+#
+/// Pseudo-code (`StringRefNaïve` is not a type, `StringRefNaïve<'…>` is).
+type StringRefNaïve<'any> = &'any String;
 
 /// Real HKT code: make `StringRef` a fully-fledged stand-alone type
 struct StringRef;
@@ -445,7 +455,7 @@ impl<'lt> WithLifetime <'lt>
 
 #### New: the `dyn for<'a>` _ad-hoc_ HKT trick
 
-<details><summary>Click to see</summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
 
 Actually, as of `0.2.0`, this crate now uses a fancier trick, which stems from
 the following observation. Consider the type
@@ -500,12 +510,11 @@ issues.
 ```rust
 use ::polonius_the_crab::{polonius, WithLifetime};
 
+#[forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
 {
-    #![forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
-
     enum StringRef {}
     impl<'lt> WithLifetime<'lt> for StringRef {
         type T = &'lt String;
@@ -556,14 +565,8 @@ This leads to the following `get_or_insert` usage:
 
 ```rust
 #![forbid(unsafe_code)]
-use {
-    ::polonius_the_crab::{
-        prelude::*,
-    },
-    ::std::{
-        collections::HashMap,
-    },
-};
+use ::polonius_the_crab::prelude::*;
+use ::std::collections::HashMap;
 
 /// Typical example of lack-of-Polonius limitation: get_or_insert pattern.
 /// See https://nikomatsakis.github.io/rust-belt-rust-2019/#72

@@ -4,7 +4,7 @@ name = "polonius-the-crab"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.2.1"  # Keep in sync
+version = "0.3.0"  # Keep in sync
 edition = "2021"
 rust-version = "1.56.0"
 
@@ -17,9 +17,9 @@ description = "Tools to feature more lenient Polonius-based borrow-checker patte
 # keywords = []
 
 [features]
-docs-rs = []  # allowed to break MSRV
+better-docs = []  # allowed to break MSRV
 
-ui-tests = ["docs-rs"]
+ui-tests = ["better-docs"]
 
 polonius = []  # To be used with `-Zpolonius`
 
@@ -30,7 +30,7 @@ polonius = []  # To be used with `-Zpolonius`
 [workspace]
 
 [package.metadata.docs.rs]
-features = ["docs-rs"]
+features = ["better-docs"]
 rustdoc-args = [
     "--html-before-content", "fix-docsrs-li-details-summary.html",
 ]
