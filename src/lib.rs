@@ -462,7 +462,7 @@ macro_rules! polonius_try {( $e:expr $(,)? ) => (
             }
         });
         // Re-using `coll` is fine if not using the `dependent` variant.
-        coll.get_mut(&-1).unwrap()
+        &mut coll[&i]
     }
     ``` */
 ///

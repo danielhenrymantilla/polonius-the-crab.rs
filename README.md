@@ -262,7 +262,7 @@ checker look the other way" just for a moment, the right moment.
 
 This thus gives us (in pseudo-code first):
 
-```rust, ignore
+```rust ,ignore
 fn polonius<'r, T> (
     borrow: &'r mut T,
     branch:
@@ -309,7 +309,7 @@ Whereas with `-Zpolonius` it is accepted.
 The correct use of `unsafe`, here, to palliate the lack of `-Zpolonius`, is to
 change:
 
-```rust, ignore
+```rust ,ignore
 let tentative_borrow = &mut *borrow; // reborrow
 ```
 
@@ -402,7 +402,7 @@ So that `_<'any>` is achieved in another manner. Through HKTs, that is, through
 
 ```rust ,ignore
 //! In pseudo-code:
-fn polonius<'r, T, Ret<'_>> (
+fn polonius<'r, T, Ret : <'_>> (
     borrow: &'r mut T,
     branch: impl FnOnce(&'_ mut T) -> Option<Ret<'_>>,
 ) -> Result<
@@ -415,8 +415,10 @@ This cannot directly be written in Rust, but you can define a trait representing
 the `<'_>`-ness of a type (`HKT` in this crate), and with it, use
 `as WithLifetime<'a>::T` as the "feed `<'a>`" operator:
 
-```rust ,ignore
-//! Real code!
+```rust
+// Real code!
+use ::polonius_the_crab::{HKT, WithLifetime};
+
 fn polonius<'r, T, Ret : HKT> (
     borrow: &'r mut T,
     branch: impl FnOnce(&'_ mut T) -> Option< <Ret as WithLifetime<'_>>::T >,
@@ -424,6 +426,7 @@ fn polonius<'r, T, Ret : HKT> (
         <Ret as WithLifetime<'r>>::T,
         &'r mut T,
     >
+# { unimplemented!(); }
 ```
 
 We have reached the definition of the actual `fn polonius` exposed by this very
@@ -433,9 +436,11 @@ Now, a `HKT` type is still cumbersome to use. If we go back to that
 `get_or_insert` example that was returning a `&'_ String`, we'd need to express
 that "generic type" representing `<'lt> => &'lt String`, such as:
 
-```rust ,ignore
-/// Pseudo-code (`StringRef` is not a type, `StringRef<'…>` is).
-type StringRef<'any> = &'any String;
+```rust
+# use ::polonius_the_crab::WithLifetime;
+#
+/// Pseudo-code (`StringRefNaïve` is not a type, `StringRefNaïve<'…>` is).
+type StringRefNaïve<'any> = &'any String;
 
 /// Real HKT code: make `StringRef` a fully-fledged stand-alone type
 struct StringRef;
@@ -505,12 +510,11 @@ issues.
 ```rust
 use ::polonius_the_crab::{polonius, WithLifetime};
 
+#[forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
 {
-    #![forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
-
     enum StringRef {}
     impl<'lt> WithLifetime<'lt> for StringRef {
         type T = &'lt String;
@@ -561,14 +565,8 @@ This leads to the following `get_or_insert` usage:
 
 ```rust
 #![forbid(unsafe_code)]
-use {
-    ::polonius_the_crab::{
-        prelude::*,
-    },
-    ::std::{
-        collections::HashMap,
-    },
-};
+use ::polonius_the_crab::prelude::*;
+use ::std::collections::HashMap;
 
 /// Typical example of lack-of-Polonius limitation: get_or_insert pattern.
 /// See https://nikomatsakis.github.io/rust-belt-rust-2019/#72
