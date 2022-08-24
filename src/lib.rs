@@ -494,9 +494,6 @@ macro_rules! polonius_loop {(
                     #[allow(clippy::self_assignment)] {
                         $var = $var;
                     }
-                    if false {
-                        $crate::polonius_break_dependent!(loop {});
-                    }
                     let () =
                         if true
                             $body
