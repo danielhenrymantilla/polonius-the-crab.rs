@@ -1,3 +1,8 @@
 # Templated by `cargo-generate` using https://github.com/danielhenrymantilla/proc-macro-template
 [alias]
 test-ui = ["test", "--doc", "--features", "ui-tests", "--", "--nocapture", "--test-threads", "1"]
+
+[build]
+rustdocflags = [
+    "--html-before-content", 'fix-docsrs-li-details-summary.html',
+]

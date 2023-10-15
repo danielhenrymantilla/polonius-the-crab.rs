@@ -1,4 +1,14 @@
-use super::*;
+#[allow(unused)]
+use super::{
+    exit_polonius,
+    polonius,
+    polonius_break,
+    polonius_break_dependent,
+    polonius_continue,
+    polonius_loop,
+    polonius_return,
+    polonius_try,
+};
 
 /// Convenient entry-point to this crate's logic.
 ///
@@ -68,13 +78,12 @@ macro_rules! polonius {(
     |$var:ident $(,)?| -> $Ret:ty
         $body:block
     $(,)?
-) => ({
+) => (
     match
         $crate::polonius::<
+            _,
+            _,
             dyn for<'polonius> $crate::WithLifetime<'polonius, T = $crate::ඞ::Dependent<$Ret>>,
-            _,
-            _,
-            _,
         >(
             $var,
             |mut $var: &mut _| {
@@ -82,24 +91,24 @@ macro_rules! polonius {(
                 #[allow(clippy::self_assignment)] {
                     $var = $var;
                 }
-                $crate::ඞ::core::result::Result::Err(
+                $crate::Either::OwnedOutput(
                     if true
                         $body
                     else {
                         // avoid a dead-code warning
-                        $crate::ඞ::core::option::Option::None.unwrap()
+                        $crate::ඞ::None.unwrap()
                     }
                 )
             },
         )
     {
-        | $crate::ඞ::core::result::Result::Ok(ret) => return ret.return_no_break(),
-        | $crate::ඞ::core::result::Result::Err((give_input_back, bail_value)) => {
-            $var = give_input_back;
-            bail_value
+        | $crate::Either::BorrowingOutput(ret) => return ret.return_no_break(),
+        | $crate::Either::OwnedOutput { value, input_borrow, .. } => {
+            $var = input_borrow;
+            value
         },
     }
-})}
+)}
 
 impl<T> ඞ::Dependent<T> {
     pub
@@ -116,13 +125,13 @@ impl<T> ඞ::Dependent<T> {
 /// See [`polonius!`] for more info.
 #[macro_export]
 macro_rules! polonius_return {( $e:expr $(,)? ) => (
-    return $crate::ඞ::core::result::Result::Ok($crate::ඞ::Dependent::Return($e))
+    return $crate::Either::BorrowingOutput($crate::ඞ::Dependent::Return($e))
 )}
 
 /// See [`polonius!`] for more info.
 #[macro_export]
 macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
-    return $crate::ඞ::core::result::Result::Err(
+    return $crate::Either::OwnedOutput(
         ($($e ,)? (),).0
     )
 )}
@@ -259,7 +268,7 @@ macro_rules! polonius_try {( $e:expr $(,)? ) => (
 /// quite straight-forward, `break` is actually more subtle and difficult
 /// to use.
 ///
-/// <details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+/// <details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 ///
 /// Indeed, compare the `break` semantics of the following two snippets:
 ///
@@ -407,12 +416,11 @@ macro_rules! polonius_loop {(
     loop {
         match
             $crate::polonius::<
+                _,
+                _,
                 dyn for<'polonius> $crate::WithLifetime<'polonius,
                     T = $crate::ඞ::Dependent< $Ret $(, $Break)? >,
                 >,
-                _,
-                _,
-                _,
             >(
                 &mut *$var,
                 |mut $var: &mut _| {
@@ -432,7 +440,7 @@ macro_rules! polonius_loop {(
                 },
             )
         {
-            | $crate::ඞ::core::result::Result::Ok(dependent) => match dependent {
+            | $crate::Either::BorrowingOutput(dependent) => match dependent {
                 | $crate::ඞ::Dependent::Return(return_value) => return return_value,
                 | $crate::ඞ::Dependent::Break(break_value) => $crate::ඞ::first! {
                     $((
@@ -443,9 +451,9 @@ macro_rules! polonius_loop {(
                     })
                 },
             },
-            | $crate::ඞ::core::result::Result::Err((give_input_back, bail_value)) => {
-                $var = give_input_back;
-                match bail_value {
+            | $crate::Either::OwnedOutput { value, input_borrow, .. } => {
+                $var = input_borrow;
+                match value {
                     | $crate::ඞ::core::ops::ControlFlow::Break(value) => {
                         break if false { loop {} } else { value };
                     },
@@ -497,7 +505,7 @@ macro_rules! polonius_loop {(
 ///
 #[macro_export]
 macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
-    return $crate::ඞ::core::result::Result::Err(
+    return $crate::Either::OwnedOutput(
         $crate::ඞ::core::ops::ControlFlow::Break(
             ($($e ,)? () ,).0
         )
@@ -634,7 +642,7 @@ macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
 /// value).
 #[macro_export]
 macro_rules! polonius_break_dependent {( $e:expr $(,)? ) => (
-    return $crate::ඞ::core::result::Result::Ok(
+    return $crate::Either::BorrowingOutput(
         $crate::ඞ::Dependent::Break($e)
     )
 )}
@@ -642,7 +650,7 @@ macro_rules! polonius_break_dependent {( $e:expr $(,)? ) => (
 /// `continue` to the next iteration of a [`polonius_loop!`].
 #[macro_export]
 macro_rules! polonius_continue {() => (
-    return $crate::ඞ::core::result::Result::Err(
+    return $crate::Either::OwnedOutput(
         $crate::ඞ::core::ops::ControlFlow::<_>::Continue(())
     )
 )}
@@ -652,7 +660,7 @@ macro_rules! polonius_continue {() => (
 mod ඞ {
     #![allow(nonstandard_style)]
 
-    pub use ::core; // or `std`
+    pub use ::core::{self, prelude::v1::*};
 
     pub
     enum cannot_use__polonius_break_dependentǃ__without_a_break_type_annotation_on__polonius_loopǃ

@@ -106,7 +106,7 @@ fn get_or_insert (
 
 ## Explanation
 
-<details open class="custom"><summary><span class="summary-box"><span>Click to hide<span></span></summary>
+<details open class="custom"><summary><span class="summary-box"><span>Click to hide</span></span></summary>
 
 Now, this pattern is known to be sound / a false positive from the current
 borrow checker, NLL.
@@ -141,7 +141,7 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
 
 ### Non-`unsafe` albeit cumbersome workarounds for lack-of-Polonius issues
 
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 
   - if possible, **reach for a dedicated API**.
     For instance, the `get_or_insert()` example can be featured using the
@@ -237,7 +237,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 #### Explanation of its implementation
 
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 
 So, back to that "safety encapsulation" idea:
 
@@ -360,15 +360,15 @@ fine (this is further enforced in CI through a special `test`).
 
 #### Generalizing it
 
-##### `None` becomes `<Err>`
+##### `Option<T<'_>>` becomes `Either<T<'_>, U>`
 
 It turns out that we don't have to restrict the `branch` to returning no data on
 `None`, and that we can use it as a "channel" through which to smuggle
 **non-borrowing** data.
 
-This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
+This leads to replacing `Option< T<'any> >` with `Either< T<'any>, U > `
 
-  - Notice how the `Err` cannot depend on `'any` since it can't name it
+  - Notice how the `U` cannot depend on `'any` since it can't name it
     (generic parameter introduced _before_ the `'any` quantification ever gets
     introduced).
 
@@ -397,17 +397,17 @@ leading to no higher-orderness to begin with and/or to type inference errors.
     regard. But the usage then becomes, imho, way more convoluted than any of
     the aforementioned workarounds, defeating the very purpose of this crate.
 
-So that `_<'any>` is achieved in another manner. Through HKTs, that is, through
+So that `Ret<'any>` is achieved in another manner. Through HKTs, that is, through
 "generic generics" / "generics that are, themselves, generic":
 
 ```rust ,ignore
 //! In pseudo-code:
 fn polonius<'r, T, Ret : <'_>> (
     borrow: &'r mut T,
-    branch: impl FnOnce(&'_ mut T) -> Option<Ret<'_>>,
-) -> Result<
+    branch: impl FnOnce(&'_ mut T) -> Either<Ret<'_>, ()>,
+) -> Either<
         Ret<'r>,
-        &'r mut T,
+        (), &'r mut T,
     >
 ```
 
@@ -421,10 +421,10 @@ use ::polonius_the_crab::{HKT, WithLifetime};
 
 fn polonius<'r, T, Ret : HKT> (
     borrow: &'r mut T,
-    branch: impl FnOnce(&'_ mut T) -> Option< <Ret as WithLifetime<'_>>::T >,
-) -> Result<
+    branch: impl FnOnce(&'_ mut T) -> Either< <Ret as WithLifetime<'_>>::T, () >,
+) -> Either<
         <Ret as WithLifetime<'r>>::T,
-        &'r mut T,
+        (), &'r mut T,
     >
 # { unimplemented!(); }
 ```
@@ -455,7 +455,7 @@ impl<'lt> WithLifetime <'lt>
 
 #### New: the `dyn for<'a>` _ad-hoc_ HKT trick
 
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 
 Actually, as of `0.2.0`, this crate now uses a fancier trick, which stems from
 the following observation. Consider the type
@@ -508,28 +508,25 @@ body, and which is quite powerful at tackling these lack-of-polonius related
 issues.
 
 ```rust
-use ::polonius_the_crab::{polonius, WithLifetime};
+use ::polonius_the_crab::{polonius, Either, WithLifetime};
 
 #[forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
 {
-    enum StringRef {}
-    impl<'lt> WithLifetime<'lt> for StringRef {
-        type T = &'lt String;
-    }
-    // or:
-    #[cfg(ALTERNATIVE)]
     type StringRef = dyn for<'lt> WithLifetime<'lt, T = &'lt String>;
 
-    match polonius::<StringRef, _, _, _>(map, |map| map.get(&22).ok_or(())) {
-        | Ok(ret) => {
+    match polonius::<_, _, StringRef>(map, |map| match map.get(&22) {
+        | Some(ret) => Either::BorrowingOutput(ret),
+        | None => Either::OwnedOutput(()),
+    }) {
+        | Either::BorrowingOutput(ret) => {
             // no second-lookup!
             ret
         },
         // we get the borrow back (we had to give the original one to `polonius()`)
-        | Err((map, ())) => {
+        | Either::OwnedOutput { value: (), input_borrow: map, .. } => {
             map.insert(22, String::from("…"));
             &map[&22]
         },

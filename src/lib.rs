@@ -44,37 +44,146 @@ where
 
 /// See the [top-level docs][crate] for more info.
 pub
-fn polonius<Ret : ?Sized + HKT, State : ?Sized, Err, F> (
-    state: &mut State,
-    branch: F,
-) -> Result<
-        <Ret as WithLifetime<'_>>::T,
-        (&'_ mut State, Err),
+fn polonius<Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
+    input_borrow: &mut Input,
+    branch: impl FnOnce(&'_ mut Input)
+                   -> Either<
+                        <BorrowingOutput as WithLifetime<'_>>::T,
+                        OwnedOutput,
+                    >
+    ,
+) -> Either<
+        <BorrowingOutput as WithLifetime<'_>>::T,
+        OwnedOutput,
+        &'_ mut Input,
     >
 where
-    F : FnOnce(&'_ mut State)
-          -> Result<
-                <Ret as WithLifetime<'_>>::T,
-                Err,
-            >,
+    BorrowingOutput : HKT,
 {
-    let err = {
-        #[cfg(not(feature = "polonius"))]
-        let state = unsafe {
-            // SAFETY:
-            // > Though this be `unsafe`, there is soundness in 't.
-            //
-            // More seriously, read the docs, I've detailed the reasoning there
-            // in great length. And/or check the `tests/soundness.rs` test,
-            // which `cargo check`s this very snippet without this `unsafe`.
-            &mut *(state as *mut _)
-        };
-        match branch(state) {
-            | Ok(ret) => return Ok(ret),
-            | Err(err) => err,
-        }
+    #[cfg(feature = "polonius")]
+    let tentative_borrow = &mut *input_borrow;
+    #[cfg(not(feature = "polonius"))]
+    let tentative_borrow = unsafe {
+        // SAFETY:
+        // > Though this be `unsafe`, there is soundness in 't.
+        //
+        // More seriously, read the docs, I've detailed the reasoning there
+        // in great length. And/or check the `tests/soundness.rs` test,
+        // which `cargo check`s this very snippet without this `unsafe`.
+        &mut *(input_borrow as *mut _)
     };
-    Err((state, err))
+    match branch(tentative_borrow) {
+        | Either::BorrowingOutput(dependent) => {
+            Either::BorrowingOutput(dependent)
+        },
+        | Either::OwnedOutput { value, .. } => {
+            Either::OwnedOutput {
+                value,
+                input_borrow,
+            }
+        },
+    }
+}
+
+/// Placeholder type to be used when _constructing_ an [`Either::OwnedOutput`]:
+///
+/// [`Either::OwnedOutput`]: type@Either::OwnedOutput
+///
+/// there is no access to the original `input_borrow` yet (due to the polonius
+/// limitation, so this [`Placeholder`] is used in its stead.
+///
+/// ```rust, no_run
+/// use ::polonius::*;
+///
+/// type StringRef = dyn for<'p> WithLifetime<'p, T = &'p str>;
+///
+/// let map: &mut ::std::collections::HashMap<i32, String> = // ...
+/// # None.unwrap();
+///
+/// # use drop as stuff;
+/// #
+/// match polonius::<_, _, StringRef>(map, |map| match map.get(&22) {
+///     | Some(ret) => Either::BorrowingOutput(ret),
+///     | None => Either::OwnedOutput {
+///         value: 42,
+///         input_borrow: /* WHAT TO PUT HERE?? */ Placeholder, // 👈👈
+///     },
+/// }) {
+///     // `polonius` magic
+///     | Either::BorrowingOutput(dependent_entry) => {
+///         // ...
+///         stuff(dependent_entry);
+///     },
+///     | Either::OwnedOutput {
+///         value,
+///         input_borrow: map, // we got our `map` borrow back! 🙌
+///     } => {
+///         assert_eq!(value, 42);
+///         stuff(map);
+///     },
+/// }
+/// ```
+///
+/// Note that despite intellectually interesting w.r.t properly understanding
+/// the API, providing that `input_borrow: Placeholder` does not provide any
+/// valuable information to the call, and is thus rather noisy.
+///
+/// Hence the [`Either::OwnedOutput()`] constructor shorthand,
+/// so as to be able to write:
+///
+/// ```rust
+/// # const _IGNORED: &str = stringify! {
+/// Either::OwnedOutput(42)
+/// // instead of
+/// Either::OwnedOutput {
+///     value: 42,
+///     input_borrow: /* WHAT TO PUT HERE?? */ Placeholder, // 👈👈
+/// }
+/// # };
+/// ```
+pub
+struct Placeholder;
+
+pub enum Either<BorrowingOutput, OwnedOutput, InputBorrow = Placeholder> {
+    BorrowingOutput(BorrowingOutput),
+    OwnedOutput {
+        value: OwnedOutput,
+        input_borrow: InputBorrow,
+    },
+}
+
+impl<BorrowingOutput, OwnedOutput> Either<BorrowingOutput, OwnedOutput> {
+    /// Tuple-variant-looking constructor sugar to _construct_
+    /// the <code>[Self::OwnedOutput]</code> variant.
+    ///
+    /// It's just convenience sugar for
+    /// <code>[Self::OwnedOutput] { value, input_borrow: [Placeholder] }</code>.
+    ///
+    /// ```rust
+    /// # const _IGNORED: &str = stringify! {
+    /// Either::OwnedOutput(42)
+    /// // is the same as:
+    /// Either::OwnedOutput {
+    ///     value: 42,
+    ///     input_borrow: Placeholder,
+    /// }
+    /// # };
+    /// ```
+    ///
+    /// See [`Placeholder`] for more info.
+    ///
+    /// [Self::OwnedOutput]: type@Self::OwnedOutput
+    #[allow(nonstandard_style)]
+    pub
+    const
+    fn OwnedOutput(value: OwnedOutput)
+      -> Self
+    {
+        Self::OwnedOutput {
+            value: value,
+            input_borrow: Placeholder,
+        }
+    }
 }
 
 #[cfg_attr(feature = "ui-tests",
