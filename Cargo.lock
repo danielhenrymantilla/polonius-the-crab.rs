@@ -3,5 +3,23 @@
 version = 3
 
 [[package]]
+name = "higher-kinded-types"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "561985554c8b8d4808605c90a5f1979cc6c31a5d20b78465cd59501233c6678e"
+dependencies = [
+ "never-say-never",
+]
+
+[[package]]
+name = "never-say-never"
+version = "6.6.666"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf5a574dadd7941adeaa71823ecba5e28331b8313fb2e1c6a5c7e5981ea53ad6"
+
+[[package]]
 name = "polonius-the-crab"
 version = "0.4.0-rc1"
+dependencies = [
+ "higher-kinded-types",
+]

@@ -83,7 +83,7 @@ macro_rules! polonius {(
         $crate::polonius::<
             _,
             _,
-            dyn for<'polonius> $crate::WithLifetime<'polonius, T = $crate::ඞ::Dependent<$Ret>>,
+            $crate::ForLt!(<'polonius> = $crate::ඞ::Dependent<$Ret>),
         >(
             $var,
             |mut $var: &mut _| {
@@ -418,9 +418,9 @@ macro_rules! polonius_loop {(
             $crate::polonius::<
                 _,
                 _,
-                dyn for<'polonius> $crate::WithLifetime<'polonius,
-                    T = $crate::ඞ::Dependent< $Ret $(, $Break)? >,
-                >,
+                $crate::ForLt!(<'polonius>
+                    = $crate::ඞ::Dependent< $Ret $(, $Break)? >
+                ),
             >(
                 &mut *$var,
                 |mut $var: &mut _| {

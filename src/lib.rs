@@ -17,48 +17,37 @@ mod prelude {
         polonius_loop,
         polonius_return,
         polonius_try,
+
+        Either,
+        ForLt,
     };
 }
+
+#[doc(no_inline)]
+pub use ::higher_kinded_types::ForLt;
 
 pub use macros::ඞ;
 mod macros;
 
 /// See the [top-level docs][crate] for more info.
 pub
-trait WithLifetime<'lt> { // Note: the `&'lt Self` implicit bound hack is,
-                          // for once, unnecessary.
-    type T;
-}
-
-/// See the [top-level docs][crate] for more info.
-pub
-trait HKT
-where
-    Self : for<'any> WithLifetime<'any>,
-{}
-
-impl<T : ?Sized> HKT for T
-where
-    Self : for<'any> WithLifetime<'any>,
-{}
-
-/// See the [top-level docs][crate] for more info.
-pub
-fn polonius<Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
-    input_borrow: &mut Input,
-    branch: impl FnOnce(&'_ mut Input)
-                   -> Either<
-                        <BorrowingOutput as WithLifetime<'_>>::T,
-                        OwnedOutput,
-                    >
+fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
+    input_borrow: &'i mut Input,
+    branch:
+        impl for<'any>
+            FnOnce(&'any mut Input)
+              -> Either<
+                    BorrowingOutput::Of<'any>,
+                    OwnedOutput,
+                >
     ,
 ) -> Either<
-        <BorrowingOutput as WithLifetime<'_>>::T,
+        BorrowingOutput::Of<'i>,
         OwnedOutput,
-        &'_ mut Input,
+        &'i mut Input,
     >
 where
-    BorrowingOutput : HKT,
+    BorrowingOutput : ForLt,
 {
     #[cfg(feature = "polonius")]
     let tentative_borrow = &mut *input_borrow;
@@ -93,9 +82,9 @@ where
 /// limitation, so this [`Placeholder`] is used in its stead.
 ///
 /// ```rust, no_run
-/// use ::polonius::*;
+/// use ::polonius_the_crab::*;
 ///
-/// type StringRef = dyn for<'p> WithLifetime<'p, T = &'p str>;
+/// type StringRef = ForLt!(&str);
 ///
 /// let map: &mut ::std::collections::HashMap<i32, String> = // ...
 /// # None.unwrap();
