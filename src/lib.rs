@@ -17,9 +17,6 @@ mod prelude {
         polonius_loop,
         polonius_return,
         polonius_try,
-
-        Either,
-        ForLt,
     };
 }
 
@@ -36,12 +33,12 @@ fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
     branch:
         impl for<'any>
             FnOnce(&'any mut Input)
-              -> Either<
+              -> PoloniusResult<
                     BorrowingOutput::Of<'any>,
                     OwnedOutput,
                 >
     ,
-) -> Either<
+) -> PoloniusResult<
         BorrowingOutput::Of<'i>,
         OwnedOutput,
         &'i mut Input,
@@ -62,11 +59,11 @@ where
         &mut *(input_borrow as *mut _)
     };
     match branch(tentative_borrow) {
-        | Either::BorrowingOutput(dependent) => {
-            Either::BorrowingOutput(dependent)
+        | PoloniusResult::Borrowing(dependent) => {
+            PoloniusResult::Borrowing(dependent)
         },
-        | Either::OwnedOutput { value, .. } => {
-            Either::OwnedOutput {
+        | PoloniusResult::Owned { value, .. } => {
+            PoloniusResult::Owned {
                 value,
                 input_borrow,
             }
@@ -74,12 +71,13 @@ where
     }
 }
 
-/// Placeholder type to be used when _constructing_ an [`Either::OwnedOutput`]:
+/// Placeholder type to be used when _constructing_ a
+/// [`PoloniusResult::Owned`].
 ///
-/// [`Either::OwnedOutput`]: type@Either::OwnedOutput
+/// [`PoloniusResult::Owned`]: type@PoloniusResult::Owned
 ///
-/// there is no access to the original `input_borrow` yet (due to the polonius
-/// limitation, so this [`Placeholder`] is used in its stead.
+/// Since there is no access to the original `input_borrow` yet (due to the
+/// polonius limitation, this [`Placeholder`] is used in its stead.
 ///
 /// ```rust, no_run
 /// use ::polonius_the_crab::*;
@@ -92,18 +90,18 @@ where
 /// # use drop as stuff;
 /// #
 /// match polonius::<_, _, StringRef>(map, |map| match map.get(&22) {
-///     | Some(ret) => Either::BorrowingOutput(ret),
-///     | None => Either::OwnedOutput {
+///     | Some(ret) => PoloniusResult::Borrowing(ret),
+///     | None => PoloniusResult::Owned {
 ///         value: 42,
 ///         input_borrow: /* WHAT TO PUT HERE?? */ Placeholder, // 👈👈
 ///     },
 /// }) {
 ///     // `polonius` magic
-///     | Either::BorrowingOutput(dependent_entry) => {
+///     | PoloniusResult::Borrowing(dependent_entry) => {
 ///         // ...
 ///         stuff(dependent_entry);
 ///     },
-///     | Either::OwnedOutput {
+///     | PoloniusResult::Owned {
 ///         value,
 ///         input_borrow: map, // we got our `map` borrow back! 🙌
 ///     } => {
@@ -117,14 +115,14 @@ where
 /// the API, providing that `input_borrow: Placeholder` does not provide any
 /// valuable information to the call, and is thus rather noisy.
 ///
-/// Hence the [`Either::OwnedOutput()`] constructor shorthand,
+/// Hence the [`PoloniusResult::Owned()`] constructor shorthand,
 /// so as to be able to write:
 ///
 /// ```rust
 /// # const _IGNORED: &str = stringify! {
-/// Either::OwnedOutput(42)
+/// PoloniusResult::Owned(42)
 /// // instead of
-/// Either::OwnedOutput {
+/// PoloniusResult::Owned {
 ///     value: 42,
 ///     input_borrow: /* WHAT TO PUT HERE?? */ Placeholder, // 👈👈
 /// }
@@ -133,26 +131,26 @@ where
 pub
 struct Placeholder;
 
-pub enum Either<BorrowingOutput, OwnedOutput, InputBorrow = Placeholder> {
-    BorrowingOutput(BorrowingOutput),
-    OwnedOutput {
+pub enum PoloniusResult<BorrowingOutput, OwnedOutput, InputBorrow = Placeholder> {
+    Borrowing(BorrowingOutput),
+    Owned {
         value: OwnedOutput,
         input_borrow: InputBorrow,
     },
 }
 
-impl<BorrowingOutput, OwnedOutput> Either<BorrowingOutput, OwnedOutput> {
-    /// Tuple-variant-looking constructor sugar to _construct_
-    /// the <code>[Self::OwnedOutput]</code> variant.
+impl<BorrowingOutput, OwnedOutput> PoloniusResult<BorrowingOutput, OwnedOutput> {
+    /// Tuple-variant-looking sugar to _construct_
+    /// the <code>[Self::Owned]</code> variant.
     ///
     /// It's just convenience sugar for
-    /// <code>[Self::OwnedOutput] { value, input_borrow: [Placeholder] }</code>.
+    /// <code>[Self::Owned] { value, input_borrow: [Placeholder] }</code>.
     ///
     /// ```rust
     /// # const _IGNORED: &str = stringify! {
-    /// Either::OwnedOutput(42)
+    /// PoloniusResult::Owned(42)
     /// // is the same as:
-    /// Either::OwnedOutput {
+    /// PoloniusResult::Owned {
     ///     value: 42,
     ///     input_borrow: Placeholder,
     /// }
@@ -161,14 +159,14 @@ impl<BorrowingOutput, OwnedOutput> Either<BorrowingOutput, OwnedOutput> {
     ///
     /// See [`Placeholder`] for more info.
     ///
-    /// [Self::OwnedOutput]: type@Self::OwnedOutput
+    /// [Self::Owned]: type@Self::Owned
     #[allow(nonstandard_style)]
     pub
     const
-    fn OwnedOutput(value: OwnedOutput)
+    fn Owned(value: OwnedOutput)
       -> Self
     {
-        Self::OwnedOutput {
+        Self::Owned {
             value: value,
             input_borrow: Placeholder,
         }

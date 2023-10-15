@@ -360,19 +360,19 @@ fine (this is further enforced in CI through a special `test`).
 
 #### Generalizing it
 
-##### `Option<T<'_>>` becomes `Either<T<'_>, U>`
+##### `Option<T<'_>>` becomes `PoloniusResult<T<'_>, U>`
 
 It turns out that we don't have to restrict the `branch` to returning no data on
-`None`, and that we can use it as a "channel" through which to smuggle
+`None`, and that we can use it as a "channel" through which to pass
 **non-borrowing** data.
 
-This leads to replacing `Option< T<'any> >` with `Either< T<'any>, U > `
+This leads to replacing `Option< T<'any> >` with `PoloniusResult< T<'any>, U >`
 
   - Notice how the `U` cannot depend on `'any` since it can't name it
     (generic parameter introduced _before_ the `'any` quantification ever gets
     introduced).
 
-##### The `FnOnceReturningAnOption` trick is replaced with a [`ForLt`] pattern
+##### The `FnOnceReturningAnOption` trick is replaced with a `ForLt` pattern
 
   - (where `FnOnceReturningAnOption` is the helper trait used in the `Demo`
     snippet above)
@@ -407,25 +407,25 @@ Through ["higher kinded types"][hkt], that is, through "generic generics" /
 //! In pseudo-code:
 fn polonius<'r, T, Ret : <'_>> (
     borrow: &'r mut T,
-    branch: impl FnOnce(&'_ mut T) -> Either<Ret<'_>, ()>,
-) -> Either<
+    branch: impl FnOnce(&'_ mut T) -> PoloniusResult<Ret<'_>, ()>,
+) -> PoloniusResult<
         Ret<'r>,
         (), &'r mut T,
     >
 ```
 
 This cannot directly be written in Rust, but you can define a trait representing
-the `<'_>`-ness of a type (`HKT` in this crate), and with it, use
-`as WithLifetime<'a>::T` as the "feed `<'a>`" operator:
+the `<'_>`-ness of a type (`ForLt` in this crate), and with it (`R: ForLt`), use
+`R::Of<'lt>` as the "feed `<'lt>`" operator:
 
 ```rust
 // Real code!
-use ::polonius_the_crab::{ForLt, Either};
+use ::polonius_the_crab::{ForLt, PoloniusResult};
 
 fn polonius<'input, T, Ret : ForLt> (
     borrow: &'input mut T,
-    branch: impl for<'any> FnOnce(&'any mut T) -> Either< Ret::Of<'any>, ()>,
-) -> Either<
+    branch: impl for<'any> FnOnce(&'any mut T) -> PoloniusResult< Ret::Of<'any>, ()>,
+) -> PoloniusResult<
         Ret::Of<'input>,
         (), &'input mut T,
     >
@@ -459,12 +459,14 @@ type StringRef2 = ForLt!(&String); // Same type as `StringRef`!
 
 ### Putting it altogether: `get_or_insert` with no `.entry()` nor double-lookup
 
-So this crate exposes a "raw" `polonius()` function which has the `unsafe` in
+</details>
+
+This crate exposes a "raw" `polonius()` function which has the `unsafe` in
 its body, and which is quite powerful at tackling these lack-of-polonius related
 issues.
 
 ```rust
-use ::polonius_the_crab::{polonius, Either, ForLt};
+use ::polonius_the_crab::{polonius, ForLt, Placeholder, PoloniusResult};
 
 #[forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 fn get_or_insert (
@@ -475,15 +477,15 @@ fn get_or_insert (
     type StringRef = ForLt!(&String);
 
     match polonius::<_, _, StringRef>(map, |map| match map.get(&22) {
-        | Some(ret) => Either::BorrowingOutput(ret),
-        | None => Either::OwnedOutput {
+        | Some(ret) => PoloniusResult::Borrowing(ret),
+        | None => PoloniusResult::Owned {
             value: 42,
             // We cannot name `map` in this branch since `ret` borrows it in the
             // other (the very lack-of-polonius problem).
             input_borrow: /* map */ Placeholder,
         },
     }) { // 🎩🪄 `polonius-the-crab` magic 🎩🪄
-        | Either::OwnedOutput {
+        | PoloniusResult::Owned {
             value,
             // we got the borrow back in the `Placeholder`'s stead!
             input_borrow: map,
@@ -494,7 +496,7 @@ fn get_or_insert (
             &map[&22]
         },
         // and yet we did not lose our access to `ret` 🙌
-        | Either::BorrowingOutput(ret) => {
+        | PoloniusResult::Borrowing(ret) => {
             ret
         },
     }

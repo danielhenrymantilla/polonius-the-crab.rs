@@ -91,7 +91,7 @@ macro_rules! polonius {(
                 #[allow(clippy::self_assignment)] {
                     $var = $var;
                 }
-                $crate::Either::OwnedOutput(
+                $crate::PoloniusResult::Owned(
                     if true
                         $body
                     else {
@@ -102,8 +102,8 @@ macro_rules! polonius {(
             },
         )
     {
-        | $crate::Either::BorrowingOutput(ret) => return ret.return_no_break(),
-        | $crate::Either::OwnedOutput { value, input_borrow, .. } => {
+        | $crate::PoloniusResult::Borrowing(ret) => return ret.return_no_break(),
+        | $crate::PoloniusResult::Owned { value, input_borrow, .. } => {
             $var = input_borrow;
             value
         },
@@ -125,13 +125,13 @@ impl<T> ඞ::Dependent<T> {
 /// See [`polonius!`] for more info.
 #[macro_export]
 macro_rules! polonius_return {( $e:expr $(,)? ) => (
-    return $crate::Either::BorrowingOutput($crate::ඞ::Dependent::Return($e))
+    return $crate::PoloniusResult::Borrowing($crate::ඞ::Dependent::Return($e))
 )}
 
 /// See [`polonius!`] for more info.
 #[macro_export]
 macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
-    return $crate::Either::OwnedOutput(
+    return $crate::PoloniusResult::Owned(
         ($($e ,)? (),).0
     )
 )}
@@ -440,7 +440,7 @@ macro_rules! polonius_loop {(
                 },
             )
         {
-            | $crate::Either::BorrowingOutput(dependent) => match dependent {
+            | $crate::PoloniusResult::Borrowing(dependent) => match dependent {
                 | $crate::ඞ::Dependent::Return(return_value) => return return_value,
                 | $crate::ඞ::Dependent::Break(break_value) => $crate::ඞ::first! {
                     $((
@@ -451,7 +451,7 @@ macro_rules! polonius_loop {(
                     })
                 },
             },
-            | $crate::Either::OwnedOutput { value, input_borrow, .. } => {
+            | $crate::PoloniusResult::Owned { value, input_borrow, .. } => {
                 $var = input_borrow;
                 match value {
                     | $crate::ඞ::core::ops::ControlFlow::Break(value) => {
@@ -505,7 +505,7 @@ macro_rules! polonius_loop {(
 ///
 #[macro_export]
 macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
-    return $crate::Either::OwnedOutput(
+    return $crate::PoloniusResult::Owned(
         $crate::ඞ::core::ops::ControlFlow::Break(
             ($($e ,)? () ,).0
         )
@@ -540,7 +540,7 @@ macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
         //                                   vvvvvvvvvvvvvvvvvvvvvvvvvvv
         let entry = polonius_loop!(|map| -> _, break: &'polonius mut i32 {
         //                                             ^^^^^^^^^
-        //                                          don't forget the special annotation either.
+        //                                          don't forget the special annotation PoloniusResult.
             if let Some(entry) = map.get_mut(&i) {
                 polonius_break_dependent!(entry);
             }
@@ -642,7 +642,7 @@ macro_rules! polonius_break {( $($e:expr $(,)?)? ) => (
 /// value).
 #[macro_export]
 macro_rules! polonius_break_dependent {( $e:expr $(,)? ) => (
-    return $crate::Either::BorrowingOutput(
+    return $crate::PoloniusResult::Borrowing(
         $crate::ඞ::Dependent::Break($e)
     )
 )}
@@ -650,7 +650,7 @@ macro_rules! polonius_break_dependent {( $e:expr $(,)? ) => (
 /// `continue` to the next iteration of a [`polonius_loop!`].
 #[macro_export]
 macro_rules! polonius_continue {() => (
-    return $crate::Either::OwnedOutput(
+    return $crate::PoloniusResult::Owned(
         $crate::ඞ::core::ops::ControlFlow::<_>::Continue(())
     )
 )}
