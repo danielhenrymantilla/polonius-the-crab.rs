@@ -31,8 +31,8 @@ https://github.com/danielhenrymantilla/polonius-the-crab.rs)
 https://crates.io/crates/polonius-the-crab)
 [![Documentation](https://docs.rs/polonius-the-crab/badge.svg)](
 https://docs.rs/polonius-the-crab)
-[![MSRV](https://img.shields.io/badge/MSRV-1.56.0-white)](
-https://gist.github.com/danielhenrymantilla/8e5b721b3929084562f8f65668920c33)
+[![MSRV](https://img.shields.io/badge/MSRV-1.67.0-white)](
+https://gist.github.com/danielhenrymantilla/9b59de4db8e5f2467ed008b3c450527b)
 [![unsafe internal](https://img.shields.io/badge/unsafe-internal-important.svg)](
 https://github.com/rust-secure-code/safety-dance/)
 [![no_std compatible](https://img.shields.io/badge/no__std-compatible-success.svg)](
