@@ -77,7 +77,7 @@ where
 /// [`PoloniusResult::Owned`]: type@PoloniusResult::Owned
 ///
 /// Since there is no access to the original `input_borrow` yet (due to the
-/// polonius limitation, this [`Placeholder`] is used in its stead.
+/// polonius limitation), this [`Placeholder`] is used in its stead.
 ///
 /// ```rust, no_run
 /// use ::polonius_the_crab::*;
@@ -121,7 +121,7 @@ where
 /// ```rust
 /// # const _IGNORED: &str = stringify! {
 /// PoloniusResult::Owned(42)
-/// // instead of
+/// // is just a shorthand for:
 /// PoloniusResult::Owned {
 ///     value: 42,
 ///     input_borrow: /* WHAT TO PUT HERE?? */ Placeholder, // 👈👈
