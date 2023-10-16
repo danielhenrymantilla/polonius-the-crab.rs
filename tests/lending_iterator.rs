@@ -49,16 +49,15 @@ where
       -> Option< <Self as LendingIteratorItem<'_>>::T >
     {
         let mut iter = &mut self.iter;
-        loop {
-            polonius! {
-                |iter| -> Option<<Self as LendingIteratorItem<'polonius>>::T> {
-                    if let Some(item) = iter.next() {
-                        if (self.predicate)(&item) {
-                            polonius_return!(Some(item));
-                        }
-                    } else {
-                        polonius_return!(None);
-                    }
+        polonius_loop! {
+            |iter| -> Option<<Self as LendingIteratorItem<'polonius>>::T> {
+                match iter.next() {
+                    | Some(item) if !(self.predicate)(&item) => {
+                        polonius_continue!()
+                    },
+                    | mb_item => {
+                        polonius_return!(mb_item)
+                    },
                 }
             }
         }
