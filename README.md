@@ -31,8 +31,8 @@ https://github.com/danielhenrymantilla/polonius-the-crab.rs)
 https://crates.io/crates/polonius-the-crab)
 [![Documentation](https://docs.rs/polonius-the-crab/badge.svg)](
 https://docs.rs/polonius-the-crab)
-[![MSRV](https://img.shields.io/badge/MSRV-1.56.0-white)](
-https://gist.github.com/danielhenrymantilla/8e5b721b3929084562f8f65668920c33)
+[![MSRV](https://img.shields.io/badge/MSRV-1.67.0-white)](
+https://gist.github.com/danielhenrymantilla/9b59de4db8e5f2467ed008b3c450527b)
 [![unsafe internal](https://img.shields.io/badge/unsafe-internal-important.svg)](
 https://github.com/rust-secure-code/safety-dance/)
 [![no_std compatible](https://img.shields.io/badge/no__std-compatible-success.svg)](
@@ -106,7 +106,7 @@ fn get_or_insert (
 
 ## Explanation
 
-<details open class="custom"><summary><span class="summary-box"><span>Click to hide<span></span></summary>
+<details open class="custom"><summary><span class="summary-box"><span>Click to hide</span></span></summary>
 
 Now, this pattern is known to be sound / a false positive from the current
 borrow checker, NLL.
@@ -141,7 +141,7 @@ So "jUsT uSe UnSaFe" you may suggest. But this is tricky:
 
 ### Non-`unsafe` albeit cumbersome workarounds for lack-of-Polonius issues
 
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 
   - if possible, **reach for a dedicated API**.
     For instance, the `get_or_insert()` example can be featured using the
@@ -237,7 +237,7 @@ crate or module, and then use the non-`unsafe fn` API thereby exposed 👌.
 
 #### Explanation of its implementation
 
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
+<details class="custom"><summary><span class="summary-box"><span>Click to show</span></span></summary>
 
 So, back to that "safety encapsulation" idea:
 
@@ -360,19 +360,19 @@ fine (this is further enforced in CI through a special `test`).
 
 #### Generalizing it
 
-##### `None` becomes `<Err>`
+##### `Option<T<'_>>` becomes `PoloniusResult<T<'_>, U>`
 
 It turns out that we don't have to restrict the `branch` to returning no data on
-`None`, and that we can use it as a "channel" through which to smuggle
+`None`, and that we can use it as a "channel" through which to pass
 **non-borrowing** data.
 
-This leads to replacing `Option< _<'any> >` with `Result< _<'any>, Err > `
+This leads to replacing `Option< T<'any> >` with `PoloniusResult< T<'any>, U >`
 
-  - Notice how the `Err` cannot depend on `'any` since it can't name it
+  - Notice how the `U` cannot depend on `'any` since it can't name it
     (generic parameter introduced _before_ the `'any` quantification ever gets
     introduced).
 
-##### The `FnOnceReturningAnOption` trick is replaced with a `HKT` pattern
+##### The `FnOnceReturningAnOption` trick is replaced with a `ForLt` pattern
 
   - (where `FnOnceReturningAnOption` is the helper trait used in the `Demo`
     snippet above)
@@ -397,34 +397,37 @@ leading to no higher-orderness to begin with and/or to type inference errors.
     regard. But the usage then becomes, imho, way more convoluted than any of
     the aforementioned workarounds, defeating the very purpose of this crate.
 
-So that `_<'any>` is achieved in another manner. Through HKTs, that is, through
-"generic generics" / "generics that are, themselves, generic":
+So that `Ret<'any>` is achieved in another manner.
+Through ["higher kinded types"][hkt], that is, through "generic generics" /
+"generics which are, themselves, generic":
+
+[hkt]: https://docs.rs/higher-kinded-types
 
 ```rust ,ignore
 //! In pseudo-code:
 fn polonius<'r, T, Ret : <'_>> (
     borrow: &'r mut T,
-    branch: impl FnOnce(&'_ mut T) -> Option<Ret<'_>>,
-) -> Result<
+    branch: impl FnOnce(&'_ mut T) -> PoloniusResult<Ret<'_>, ()>,
+) -> PoloniusResult<
         Ret<'r>,
-        &'r mut T,
+        (), &'r mut T,
     >
 ```
 
 This cannot directly be written in Rust, but you can define a trait representing
-the `<'_>`-ness of a type (`HKT` in this crate), and with it, use
-`as WithLifetime<'a>::T` as the "feed `<'a>`" operator:
+the `<'_>`-ness of a type (`ForLt` in this crate), and with it (`R: ForLt`), use
+`R::Of<'lt>` as the "feed `<'lt>`" operator:
 
 ```rust
 // Real code!
-use ::polonius_the_crab::{HKT, WithLifetime};
+use ::polonius_the_crab::{ForLt, PoloniusResult};
 
-fn polonius<'r, T, Ret : HKT> (
-    borrow: &'r mut T,
-    branch: impl FnOnce(&'_ mut T) -> Option< <Ret as WithLifetime<'_>>::T >,
-) -> Result<
-        <Ret as WithLifetime<'r>>::T,
-        &'r mut T,
+fn polonius<'input, T, Ret : ForLt> (
+    borrow: &'input mut T,
+    branch: impl for<'any> FnOnce(&'any mut T) -> PoloniusResult< Ret::Of<'any>, ()>,
+) -> PoloniusResult<
+        Ret::Of<'input>,
+        (), &'input mut T,
     >
 # { unimplemented!(); }
 ```
@@ -432,106 +435,69 @@ fn polonius<'r, T, Ret : HKT> (
 We have reached the definition of the actual `fn polonius` exposed by this very
 crate!
 
-Now, a `HKT` type is still cumbersome to use. If we go back to that
+Now, a `ForLt` type is still cumbersome to use. If we go back to that
 `get_or_insert` example that was returning a `&'_ String`, we'd need to express
 that "generic type" representing `<'lt> => &'lt String`, such as:
 
 ```rust
-# use ::polonius_the_crab::WithLifetime;
+# use ::polonius_the_crab::ForLt;
 #
-/// Pseudo-code (`StringRefNaïve` is not a type, `StringRefNaïve<'…>` is).
+/// Invalid code for our API:
+/// It is not `StringRefNaïve` which is a type, but `StringRefNaïve<'smth>`
+/// (notice the mandatory "early fed" generic lifetime parameter).
 type StringRefNaïve<'any> = &'any String;
 
-/// Real HKT code: make `StringRef` a fully-fledged stand-alone type
-struct StringRef;
-/// And now express the `<'lt> => &'lt String` relationship:
-impl<'lt> WithLifetime <'lt>
-   for StringRef // is:  ⇓
-{                     // ⇓
-                      // ⇓
-    type T =         &'lt String    ;
-}
+/// Correct code: make `StringRef` a fully-fledged stand-alone type!
+type StringRef = ForLt!(<'any> = &'any String);
+
+// Note: there exists lifetime elision sugar, so as to be able to instead write:
+type StringRef2 = ForLt!(&String); // Same type as `StringRef`!
 ```
 
-#### New: the `dyn for<'a>` _ad-hoc_ HKT trick
-
-<details class="custom"><summary><span class="summary-box"><span>Click to show<span></span></summary>
-
-Actually, as of `0.2.0`, this crate now uses a fancier trick, which stems from
-the following observation. Consider the type
-`dyn for<'any> WithLifetime<'any, T = &'any String>`:
-
-  - It's a standalone/in-and-of-itself type
-    (which `type StringRef<'any> = &'any String` (without `'any`) is not).
-
-  - And yet thanks to that `for<'any> … T = &'any String` quantification,
-    it does manage to express that nested / currified type-level function
-    wherein we can feed any `'lt` and get a `&'lt String` back.
-
-That is, it achieves the same as our
-`struct StringRef; impl<'lt> WithLifetime<'lt> for StringRef` definition!
-
-But with no need to define an extra type, that is, in an _ad-hoc_ / pluggable
-manner, which incidentally allows getting rid of the need to specify the
-generics in scope.
-
-  - For instance, expressing the `'lt => &'lt T` HKT for some generic `T` in
-    scope can simply be done with `dyn for<'lt> WithLifetime<'lt, T = &'lt T>`,
-    whereas with the hand-rolled approach it requires writing:
-
-    ```rust
-    // That extra parameter achieves a `where Self : 'lt` implicit bound on the
-    // universally quantified `'lt`.
-    trait WithLifetime<'lt, WhereSelfIsUsableWithinLtHack = &'lt Self> {
-        type T : ?Sized;
-    }
-
-    struct Ref<T>(T);
-
-    impl<'lt, T> WithLifetime<'lt> for Ref<T> {
-        type T = &'lt T;
-    }
-    ```
-
-      - moreover, the `WhereSelfIsUsableWithinLtHack` is not even necessary
-        when using the `dyn for<'lt> WithLifetime<'lt, T = &'lt T>` approach:
-        neat!
-
-</details>
+  - For more info about this distinction, please read the documentation of
+    <https://docs.rs/higher-kinded-types>.
 
 ### Putting it altogether: `get_or_insert` with no `.entry()` nor double-lookup
 
 </details>
 
-So this crate exposes a "raw" `polonius()` function that has the `unsafe` in its
-body, and which is quite powerful at tackling these lack-of-polonius related
+This crate exposes a "raw" `polonius()` function which has the `unsafe` in
+its body, and which is quite powerful at tackling these lack-of-polonius related
 issues.
 
 ```rust
-use ::polonius_the_crab::{polonius, WithLifetime};
+use ::polonius_the_crab::{polonius, ForLt, Placeholder, PoloniusResult};
 
 #[forbid(unsafe_code)] // No unsafe code in this function: VICTORY!!
 fn get_or_insert (
     map: &'_ mut ::std::collections::HashMap<i32, String>,
 ) -> &'_ String
 {
-    enum StringRef {}
-    impl<'lt> WithLifetime<'lt> for StringRef {
-        type T = &'lt String;
-    }
-    // or:
-    #[cfg(ALTERNATIVE)]
-    type StringRef = dyn for<'lt> WithLifetime<'lt, T = &'lt String>;
+    // Our `BorrowingOutput` type. In this case, `&String`:
+    type StringRef = ForLt!(&String);
 
-    match polonius::<StringRef, _, _, _>(map, |map| map.get(&22).ok_or(())) {
-        | Ok(ret) => {
-            // no second-lookup!
-            ret
+    match polonius::<_, _, StringRef>(map, |map| match map.get(&22) {
+        | Some(ret) => PoloniusResult::Borrowing(ret),
+        | None => PoloniusResult::Owned {
+            value: 42,
+            // We cannot name `map` in this branch since `ret` borrows it in the
+            // other (the very lack-of-polonius problem).
+            input_borrow: /* map */ Placeholder,
         },
-        // we get the borrow back (we had to give the original one to `polonius()`)
-        | Err((map, ())) => {
+    }) { // 🎩🪄 `polonius-the-crab` magic 🎩🪄
+        | PoloniusResult::Owned {
+            value,
+            // we got the borrow back in the `Placeholder`'s stead!
+            input_borrow: map,
+        } => {
+            assert_eq!(value, 42);
+
             map.insert(22, String::from("…"));
             &map[&22]
+        },
+        // and yet we did not lose our access to `ret` 🙌
+        | PoloniusResult::Borrowing(ret) => {
+            ret
         },
     }
 }

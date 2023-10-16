@@ -4,9 +4,9 @@ name = "polonius-the-crab"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.3.1"  # Keep in sync
+version = "0.4.0"  # Keep in sync
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.67.0"
 
 license = "Zlib OR MIT OR Apache-2.0"
 repository = "https://github.com/danielhenrymantilla/polonius-the-crab.rs"
@@ -24,6 +24,7 @@ ui-tests = ["better-docs"]
 polonius = []  # To be used with `-Zpolonius`
 
 [dependencies]
+higher-kinded-types = "0.1.1"
 
 [dev-dependencies]
 
