@@ -136,7 +136,11 @@ macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
     )
 )}
 
-/// Perform the `?` operation (on `Result`s). See [`polonius!`] for more info.
+/// Perform the `?` operation inside a [`polonius!`] or [`polonius_loop!`] block.
+///
+///   - Only [`Result`] and [`Option`] are supported (_e.g._, no `ControlFlow`).
+///
+/// See [`polonius!`] for more info.
 ///
 /// ## Example
 ///
@@ -172,13 +176,11 @@ macro_rules! exit_polonius {( $($e:expr $(,)?)? ) => (
     ``` */
 #[macro_export]
 macro_rules! polonius_try {( $e:expr $(,)? ) => (
-    match $e {
-        | $crate::ඞ::core::result::Result::Ok(it) => it,
-        | $crate::ඞ::core::result::Result::Err(err) => {
+    match $crate::ඞ::Try::branch($e) {
+        | $crate::ඞ::Ok(it) => it,
+        | $crate::ඞ::Err(residual) => {
             $crate::polonius_return!(
-                $crate::ඞ::core::result::Result::Err(
-                    $crate::ඞ::core::convert::From::from(err),
-                )
+                $crate::ඞ::Residual::with_output(residual)
             )
         },
     }
@@ -661,6 +663,8 @@ mod ඞ {
     #![allow(nonstandard_style)]
 
     pub use ::core::{self, prelude::v1::*};
+
+    pub use crate::r#try::{Try, Residual};
 
     pub
     enum cannot_use__polonius_break_dependentǃ__without_a_break_type_annotation_on__polonius_loopǃ

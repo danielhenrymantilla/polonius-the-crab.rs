@@ -19,7 +19,8 @@ checksum = "cf5a574dadd7941adeaa71823ecba5e28331b8313fb2e1c6a5c7e5981ea53ad6"
 
 [[package]]
 name = "polonius-the-crab"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "higher-kinded-types",
+ "never-say-never",
 ]

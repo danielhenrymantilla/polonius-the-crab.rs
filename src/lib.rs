@@ -26,6 +26,8 @@ pub use ::higher_kinded_types::ForLt;
 pub use macros::ඞ;
 mod macros;
 
+mod r#try;
+
 /// See the [top-level docs][crate] for more info.
 pub
 fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
