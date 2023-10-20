@@ -28,7 +28,79 @@ mod macros;
 
 mod r#try;
 
+/// The key stone of the API of this crate.
 /// See the [top-level docs][crate] for more info.
+///
+/// Signature formatted for readability:
+/**
+```rust
+# const _IGNORED: &str = stringify! {
+fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
+    input_borrow: &'i mut Input,
+    branch:
+        impl for<'any>
+            FnOnce(&'any mut Input)
+              -> PoloniusResult<
+                    BorrowingOutput::Of<'any>,
+                    OwnedOutput, // -----------+
+                >                           // |
+    ,                                       // | `polonius()`
+) -> PoloniusResult<                        // | magic
+        BorrowingOutput::Of<'i>,            // | adds "back"
+        OwnedOutput, &'i mut Input, // <-------+ the `input_borrow`
+    >
+where
+    BorrowingOutput : ForLt,
+# };
+``` */
+///
+/// ## Turbofishing a `ForLt!()` parameter.
+///
+/// As described in the [top-level docs][crate], the key aspect that allows this
+/// function to be both _sound_, and _generic_, is that it involves a
+/// `for<'any>`-quantified lifetime in its [branching][PoloniusResult] closure,
+/// and a lifetime-generic generic type parameter.
+///
+/// There was no stutter: this is indeed a generic generic type parameter: the
+/// API is said to be "higher-kinded", related to HKTs ([higher-kinded
+/// types][hkts]).
+///
+/// Hence the <code>BorrowingOutput : [ForLt]</code> (lifetime-generic) generic
+/// type parameter.
+///
+/// [ForLt]: trait@ForLt
+///
+/// Such "`For` types" involved in these HKT APIs, however, **cannot be
+/// elided**, since they do not play well with **type inference**.
+///
+/// This means that turbofishing this _third_ type parameter is:
+///   - mandatory;
+///   - to be done using the [`ForLt!`] macro.
+///
+/// ```rust
+/// # /*
+/// polonius::<_, _, ForLt!(…)>(…)
+/// # */
+/// ```
+///
+/// [hkts]: https://docs.rs/higher-kinded-types
+///
+/// If this sounds too complex or abstract, know that there also are:
+///
+/// ## Easier APIs for the most pervasive use cases
+///
+/// These are provided as the macros that accompany this crate:
+///
+///   - [`polonius!`] for most cases;
+///
+///   - [`polonius_loop!`] as extra sugar for a specific shape of
+///     `loop { polonius!(…) }`
+///
+///       - ⚠️ [not every `loop { polonius!(…); … }` case can be translated][l]
+///         to a `polonius_loop!`. When in doubt, fall back to a lower-level
+///         [`polonius!`] invocation, or even to a manual [`polonius()`] call.
+///
+/// [l]: https://github.com/danielhenrymantilla/polonius-the-crab.rs/issues/11
 pub
 fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
     input_borrow: &'i mut Input,
@@ -42,8 +114,7 @@ fn polonius<'i, Input : ?Sized, OwnedOutput, BorrowingOutput : ?Sized> (
     ,
 ) -> PoloniusResult<
         BorrowingOutput::Of<'i>,
-        OwnedOutput,
-        &'i mut Input,
+        OwnedOutput, &'i mut Input,
     >
 where
     BorrowingOutput : ForLt,
@@ -79,7 +150,8 @@ where
 /// [`PoloniusResult::Owned`]: type@PoloniusResult::Owned
 ///
 /// Since there is no access to the original `input_borrow` yet (due to the
-/// polonius limitation), this [`Placeholder`] is used in its stead.
+/// very polonius limitation that makes this crate necessary), this
+/// [`Placeholder`] is used in its stead.
 ///
 /// ```rust, no_run
 /// use ::polonius_the_crab::*;
@@ -133,10 +205,36 @@ where
 pub
 struct Placeholder;
 
-pub enum PoloniusResult<BorrowingOutput, OwnedOutput, InputBorrow = Placeholder> {
+/// Output type of both the [`polonius()`] function and the closure it takes.
+///
+/// It represents the conceptual code-flow / branch disjunction between:
+///
+///   - having some _dependent_ type still [`Borrowing`][Self::Borrowing] from
+///     the `input_borrow` _given_/forfeited to [`polonius()`];
+///
+///   - or having no such type, _i.e._, having only "[`Owned`][type@Self::Owned]"
+///     (as far as the `input_borrow` is concerned) output.
+///
+///       - [`polonius()`] magic makes it so, in this branch/case, its
+///         `.input_borrow` shall be populated for the caller to get back access
+///         to it.
+pub
+enum PoloniusResult<BorrowingOutput, OwnedOutput, InputBorrow = Placeholder> {
+    /// Variant to return in the "happy" case where our tentative (re)borrow
+    /// actually yielded some dependent / still-`Borrowing` type which we wish
+    /// to keep hold of, _e.g._, [to `return` it from the
+    /// function][`polonius_return!`].
     Borrowing(BorrowingOutput),
+
+    /// Variant to return in the branches where we are done with any dependent
+    /// value, and we would like to instead get our `input_borrow` back.
     Owned {
+        /// The inner `value` of the [`Self::Owned(value)`][Self::Owned()] case.
         value: OwnedOutput,
+
+        /// When constructing this variant, inside [`polonius()`]' closure,
+        /// a [`Placeholder`] is to be put in its stead, to let [`polonius()`]
+        /// replace it with its `input_borrow`.
         input_borrow: InputBorrow,
     },
 }

@@ -254,7 +254,7 @@ defining ingredients:
   - **A branch**, where one of the branches returns based on that borrow, whilst
     the other is no longer interested in it.
 
-The issue is then that that second branch ought to get back access to the
+The issue is then that this second branch ought to get back access to the
 stuff borrowed in the first branch, but the current borrow checker denies it.
 
 That's where we'll sprinkle some correctly-placed `unsafe` to make the "borrow
@@ -437,7 +437,7 @@ crate!
 
 Now, a `ForLt` type is still cumbersome to use. If we go back to that
 `get_or_insert` example that was returning a `&'_ String`, we'd need to express
-that "generic type" representing `<'lt> => &'lt String`, such as:
+this "generic type" representing `<'lt> => &'lt String`, such as:
 
 ```rust
 # use ::polonius_the_crab::ForLt;
@@ -450,7 +450,7 @@ type StringRefNaïve<'any> = &'any String;
 /// Correct code: make `StringRef` a fully-fledged stand-alone type!
 type StringRef = ForLt!(<'any> = &'any String);
 
-// Note: there exists lifetime elision sugar, so as to be able to instead write:
+// Note: the macro supports lifetime elision, so as to be able to instead write:
 type StringRef2 = ForLt!(&String); // Same type as `StringRef`!
 ```
 
