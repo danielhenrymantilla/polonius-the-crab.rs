@@ -131,16 +131,16 @@ where
         // which `cargo check`s this very snippet without this `unsafe`.
         &mut *(input_borrow as *mut _)
     };
-    match branch(tentative_borrow) {
+    let owned_value = match branch(tentative_borrow) {
         | PoloniusResult::Borrowing(dependent) => {
-            PoloniusResult::Borrowing(dependent)
+            return PoloniusResult::Borrowing(dependent);
         },
-        | PoloniusResult::Owned { value, .. } => {
-            PoloniusResult::Owned {
-                value,
-                input_borrow,
-            }
-        },
+        | PoloniusResult::Owned { value, .. } => value,
+    }; // <- `drop(PoloniusResult::Owned { .. })`.
+       // See https://github.com/rust-lang/rust/issues/126520 for more info.
+    PoloniusResult::Owned {
+        value: owned_value,
+        input_borrow,
     }
 }
 
