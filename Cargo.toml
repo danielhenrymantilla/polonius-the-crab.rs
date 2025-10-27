@@ -4,7 +4,7 @@ name = "polonius-the-crab"
 authors = [
     "Daniel Henry-Mantilla <daniel.henry.mantilla@gmail.com>",
 ]
-version = "0.4.2"  # Keep in sync
+version = "0.5.0"  # Keep in sync
 edition = "2021"
 rust-version = "1.67.0"
 
@@ -24,7 +24,7 @@ ui-tests = ["better-docs"]
 polonius = []  # To be used with `-Zpolonius`
 
 [dependencies]
-higher-kinded-types.version = "0.1.1"
+higher-kinded-types.version = "0.2.1"
 _never-say-never.package = "never-say-never"
 _never-say-never.version = "6.6.666"
 
