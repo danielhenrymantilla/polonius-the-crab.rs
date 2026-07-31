@@ -78,36 +78,36 @@ impl<'slice, T, const WIDTH: usize> WindowsMut<&'slice mut [T], WIDTH> {
             : for<'n> LendingIteratorItem<'n, T = &'n mut [T; WIDTH]>
         ,
     {
-        return Self { slice, start: 0 };
-        // where:
-        impl<'next, 'slice, T, const WIDTH: usize>
-            LendingIteratorItem<'next>
-        for
-            WindowsMut<&'slice mut [T], WIDTH>
-        {
-            type T = &'next mut [T; WIDTH];
-        }
+        Self { slice, start: 0 }
+    }
+}
 
-        impl<'slice, T, const WIDTH: usize>
-            LendingIterator
-        for
-            WindowsMut<&'slice mut [T], WIDTH>
-        {
-            fn next<'next> (
-                self: &'next mut WindowsMut<&'slice mut [T], WIDTH>,
-            ) -> Option<
-                    &'next mut [T; WIDTH],
-                >
-            {
-                let slice =
-                    self.slice
-                        .get_mut(self.start ..)?
-                        .get_mut(.. WIDTH)?
-                ;
-                self.start += 1;
-                Some(slice.try_into().unwrap())
-            }
-        }
+impl<'next, 'slice, T, const WIDTH: usize>
+    LendingIteratorItem<'next>
+for
+    WindowsMut<&'slice mut [T], WIDTH>
+{
+    type T = &'next mut [T; WIDTH];
+}
+
+impl<'slice, T, const WIDTH: usize>
+    LendingIterator
+for
+    WindowsMut<&'slice mut [T], WIDTH>
+{
+    fn next<'next> (
+        self: &'next mut WindowsMut<&'slice mut [T], WIDTH>,
+    ) -> Option<
+            &'next mut [T; WIDTH],
+        >
+    {
+        let slice =
+            self.slice
+                .get_mut(self.start ..)?
+                .get_mut(.. WIDTH)?
+        ;
+        self.start += 1;
+        Some(slice.try_into().unwrap())
     }
 }
 

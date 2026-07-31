@@ -31,7 +31,7 @@ https://github.com/danielhenrymantilla/polonius-the-crab.rs)
 https://crates.io/crates/polonius-the-crab)
 [![Documentation](https://docs.rs/polonius-the-crab/badge.svg)](
 https://docs.rs/polonius-the-crab)
-[![MSRV](https://img.shields.io/badge/MSRV-1.67.0-white)](
+[![MSRV](https://img.shields.io/badge/MSRV-1.89.0-white)](
 https://gist.github.com/danielhenrymantilla/9b59de4db8e5f2467ed008b3c450527b)
 [![unsafe internal](https://img.shields.io/badge/unsafe-internal-important.svg)](
 https://github.com/rust-secure-code/safety-dance/)
@@ -503,7 +503,7 @@ fn get_or_insert (
 }
 ```
 
-  - [Playground](https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=8d5bd3271604a02508587b3c0b964d79)
+  - [Playground](https://play.rust-lang.org/?version=stable&mode=debug&edition=2024&gist=8d5bd3271604a02508587b3c0b964d79)
 
 We'll have to admit this is **quite cumbersome to use!** 😵‍💫
 
