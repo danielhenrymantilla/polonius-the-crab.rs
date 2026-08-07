@@ -62,7 +62,7 @@ See the following issues:
 
 All these examples boil down to the following canonical instance:
 
-```rust ,compile_fail
+```rust ,ignore
 #![forbid(unsafe_code)]
 use ::std::{
     collections::HashMap,
@@ -103,6 +103,22 @@ fn get_or_insert (
 ```
 
 </details>
+
+  - EDIT: this used to fail to compile until Rust 1.99.0, but as of https://blog.rust-lang.org/2026/08/04/enabling-polonius-alpha-on-nightly/, it no longer does ⚠️. As such, you may not necessarily need to use ~~[`polonius-the-crap`](https://github.com/danielhenrymantilla/lending-iterator.rs/issues/5#:~:text=typical%20usage%20of-,polonius%2Dthe%2Dcrap,-or%20lending%2Diterator)~~ this crate anymore. With that being said, such a restricted version of `polonius` remains limited, and some snippets still run into lack-of-*full*-polonius issues, such as, notably:
+
+    ```rust ,compile_fail
+    struct Node { next: Option<Box<Node>> }
+
+    fn the_crab_stands_resolute() {
+        let mut list = Some(Box::new(Node { next: None }));
+        let mut cursor = &mut list;
+        while let Some(node) = cursor {
+            if true {
+                cursor = &mut node.next;
+            }
+        }
+    }
+    ```
 
 ## Explanation
 
