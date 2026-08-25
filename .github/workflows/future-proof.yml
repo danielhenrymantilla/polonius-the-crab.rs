@@ -5,12 +5,16 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
   schedule:
     - cron: '0 8 * * 1,5'
 
 jobs:
   # == TEST == #
   test-no-ui:
+    if: github.event_name != 'pull_request' || contains(github.head_ref, 'cron-ci')
     name: (Check & Build &) Test
     runs-on: ${{ matrix.os }}
     strategy:
@@ -21,29 +25,28 @@ jobs:
           - macos-latest
           - windows-latest
         # What we want to test: (stable, cargo update), (beta, --locked), (nightly, cargo update).
-        rust-toolchain:
+        future-proof:
           # Future-proof against non-locked regressions.
-          - stable
+          - rust-toolchain: stable
+            cargo-locked: '' # --locked already tested in CI, and in future-proof of beta.
           # Future-proof against compiler-regressions
-          - nightly
-        cargo-locked: ['']
-        include:
-          # Let's check for a compiler regression of `--locked`.
-          - rust-toolchain: beta
+          - rust-toolchain: beta # "nigh stable"
             cargo-locked: '--locked'
+          - rust-toolchain: nightly
+            cargo-locked: ''
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: default
           override: true
-          toolchain: ${{ matrix.rust-toolchains }}
+          toolchain: ${{ matrix.future-proof.rust-toolchain }}
 
       - name: Clone repo
         uses: actions/checkout@v2
 
       - name: Update `Cargo.lock`
-        if: matrix.cargo-locked != '--locked'
+        if: matrix.future-proof.cargo-locked != '--locked'
         run: cargo update -v
 
       - name: Cargo test
@@ -52,10 +55,10 @@ jobs:
           RUSTC_BOOTSTRAP: 1
         with:
           command: test
-          args: ${{ matrix.cargo-locked }} --features better-docs
+          args: ${{ matrix.future-proof.cargo-locked }} --features better-docs
 
       - name: Cargo test (embed `README.md` + UI)
-        if: matrix.rust-toolchains == 'beta'
+        if: matrix.future-proof.rust-toolchain == 'beta'
         uses: actions-rs/cargo@v1
         env:
           RUSTC_BOOTSTRAP: 1
