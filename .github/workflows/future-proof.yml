@@ -5,12 +5,16 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
   schedule:
     - cron: '0 8 * * 1,5'
 
 jobs:
   # == TEST == #
   test-no-ui:
+    if: github.event_name != 'pull_request' || contains(github.head_ref, 'cron-ci')
     name: (Check & Build &) Test
     runs-on: ${{ matrix.os }}
     strategy:
