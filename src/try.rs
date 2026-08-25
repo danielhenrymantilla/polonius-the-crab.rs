@@ -68,9 +68,9 @@ impl Residual for None {
     }
 }
 
-/// On 1.67.0 we get a weird interaction with the `WithOutput<T>` GAT when this
-/// `Never` definition comes from an external crate. So we re-inline
-/// `never_say_never`'s logic here.
+/// We get a weird interaction with the `WithOutput<T>` GAT when this
+/// `Never` definition comes from an external crate (trait solver
+/// recursion overflow). So we re-inline `never_say_never`'s logic here.
 mod never_say_never {
     extern crate _never_say_never;
     pub trait FnPtr { type Ret; }

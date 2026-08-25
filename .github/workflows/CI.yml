@@ -9,12 +9,12 @@ on:
 jobs:
   # == CHECK == #
   check:
-    name: "Check beta stable and MSRV=1.67.0"
+    name: "Check beta stable and MSRV=1.89.0"
     runs-on: ubuntu-latest
     strategy:
       matrix:
         rust-toolchains:
-          - 1.67.0
+          - 1.89.0
           - stable
           - beta
         cargo-locked: ["--locked", ""]
@@ -40,7 +40,7 @@ jobs:
           args: ${{ matrix.cargo-locked }}
 
   # == BUILD & TEST == #
-  build-and-test:
+  test:
     name: Build and test
     runs-on: ${{ matrix.os }}
     needs: [check]
@@ -52,7 +52,7 @@ jobs:
           - macos-latest
           - windows-latest
         rust-toolchains:
-          - 1.67.0
+          - 1.89.0
           - stable
     steps:
       - name: Install Rust toolchain
@@ -90,3 +90,21 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: test-ui
+
+  required-jobs:
+    name: 'All the required jobs'
+    needs:
+      - check
+      - test
+      - ui-test
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: 'Check success of the required jobs'
+        run: |
+          RESULT=$(echo "${{ join(needs.*.result, '') }}" | sed -e "s/success//g")
+          if [ -n "$RESULT" ]; then
+            echo "❌"
+            false
+          fi
+          echo "✅"

@@ -20,12 +20,17 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-        rust-toolchains:
-          - 1.67.0
+        # What we want to test: (stable, cargo update), (beta, --locked), (nightly, cargo update).
+        rust-toolchain:
+          # Future-proof against non-locked regressions.
           - stable
-          - beta
+          # Future-proof against compiler-regressions
           - nightly
-        cargo-locked: ["--locked", ""]
+        cargo-locked: ['']
+        include:
+          # Let's check for a compiler regression of `--locked`.
+          - rust-toolchain: beta
+            cargo-locked: '--locked'
     steps:
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -50,7 +55,7 @@ jobs:
           args: ${{ matrix.cargo-locked }} --features better-docs
 
       - name: Cargo test (embed `README.md` + UI)
-        if: matrix.rust-toolchains == 'stable'
+        if: matrix.rust-toolchains == 'beta'
         uses: actions-rs/cargo@v1
         env:
           RUSTC_BOOTSTRAP: 1
