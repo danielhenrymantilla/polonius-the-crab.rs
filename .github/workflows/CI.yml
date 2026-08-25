@@ -40,7 +40,7 @@ jobs:
           args: ${{ matrix.cargo-locked }}
 
   # == BUILD & TEST == #
-  build-and-test:
+  test:
     name: Build and test
     runs-on: ${{ matrix.os }}
     needs: [check]
@@ -90,3 +90,21 @@ jobs:
           uses: actions-rs/cargo@v1
           with:
             command: test-ui
+
+  required-jobs:
+    name: 'All the required jobs'
+    needs:
+      - check
+      - test
+      - ui-test
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: 'Check success of the required jobs'
+        run: |
+          RESULT=$(echo "${{ join(needs.*.result, '') }}" | sed -e "s/success//g")
+          if [ -n "$RESULT" ]; then
+            echo "❌"
+            false
+          fi
+          echo "✅"
